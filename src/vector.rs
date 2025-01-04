@@ -1,5 +1,6 @@
 use std::array;
 
+#[macro_use]
 use crate::complex::*;
 
 #[derive(Clone, PartialEq, Debug)]
@@ -9,6 +10,7 @@ pub struct Vector<const N: usize, F: Field> {
 
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, Sub, SubAssign};
 
+// MARK: Vector
 impl<const N: usize, F: Field> Vector<N,F> {
     pub fn new(components: [Complex<F>; N]) -> Self {
         Self {
@@ -21,6 +23,14 @@ impl<const N: usize, F: Field> Vector<N,F> {
             data: array::from_fn(|_| Complex::zero())
         }
     }   
+
+    pub fn dot(&self, rhs: &Self) -> Complex<F> {
+        let mut result = Complex::zero();
+        for i in 0..N {
+            result += self.data[i].conjugate() * rhs.data[i];
+        }
+        result
+    }
 }
 
 impl<const N: usize, F: Field> AddAssign<&Self> for Vector<N, F> {
@@ -73,6 +83,20 @@ impl<const N: usize, F: Field> Mul<Complex<F>> for Vector<N, F> {
     }
 }
 
+macro_rules! vec64 {
+    [$($r:literal $(+)? $($i:literal i)?),* ] => {
+        Vector::new(
+            [$({
+                let mut i = 0.0;
+                $(
+                    i = $i as f64;
+                )?
+                Complex::new($r as f64, i)
+            }),*]
+        )
+    };
+}
+
 #[cfg(test)]
 mod tests {
     use std::array;
@@ -94,5 +118,30 @@ mod tests {
         
         va *= Complex::new(-2.0,0.0);
         assert_eq!(va, vb);
+    }
+
+    #[test]
+    fn test_inner_product() {
+        let a = vec64![1.0 - 1.0 i, 3.0];
+        assert!(a.dot(&a).r > 0.0);
+
+        let b = vec64![0.0, 0.0];
+        assert_eq!(b.dot(&b), Complex::zero());
+
+        let mut a = vec64![1.0 + 2.0 i, -2.0 - 3.0 i];
+        let mut b = vec64![1.0 - 2.0 i, 2.0 + 3.0 i];
+        let c = vec64![2.0 + 3.0 i, 3.0 - 2.0 i];
+
+        assert!(a.dot(&b) == b.dot(&a).conjugate());
+        let b_c = b.clone() + &c;
+        assert!(a.dot(&b_c) == a.dot(&b) + a.dot(&c));
+
+        let a_dot_b = a.dot(&b);
+        b *= Complex::new(2.0,1.0);
+        assert_eq!(a.dot(&b), a_dot_b * Complex::new(2.0,1.0));
+
+        let a_dot_c = a.dot(&c);
+        a *= Complex::new(2.0,1.0);
+        assert_eq!(a.dot(&c), a_dot_c * Complex::new(2.0,1.0).conjugate());
     }
 }

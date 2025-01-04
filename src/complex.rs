@@ -142,14 +142,30 @@ impl<F: Field> From<ComplexP<F>> for Complex<F> {
 #[macro_export]
 macro_rules! c32 {
     ($r: literal $(+)? $($i: literal i)?) => {
-        let mut r = $r as f32;
-        let mut i = 0.0;
-        $()?
-        $(
-            i = $i as f32;
-        )?
+        {
+            let mut r = $r as f32;
+            let mut i = 0.0;
+            $(
+                i = $i as f32;
+            )?
 
-        Complex::new(r,i)
+            Complex::new(r,i)
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! c64 {
+    ($r: literal $(+)? $($i: literal i)?) => {
+        {
+            let mut r = $r as f64;
+            let mut i = 0.0;
+            $(
+                i = $i as f64;
+            )?
+
+            Complex::new(r,i)
+        }
     }
 }
 
@@ -338,7 +354,7 @@ mod tests {
 
     #[test]
     fn exc_1_3_8() {
-        let z = c32!(1 + -1.0 i)
+        let z = c64!(1 + -1.0 i);
 
         let z_polar: ComplexP<f64> = z.into();
         let Complex{r: ra, i: ia} = z;

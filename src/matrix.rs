@@ -2,8 +2,6 @@ use crate::complex::*;
 use crate::vector::*;
 
 use std::ops::{Add, AddAssign, Neg, Sub, SubAssign, Mul, MulAssign};
-use std::sync::MappedRwLockReadGuard;
-
 #[derive(Clone, PartialEq, Debug)]
 struct Matrix<const M: usize, const N: usize, F: Field> {
     pub data: [[Complex<F>;N];M]
@@ -223,6 +221,6 @@ mod tests {
     }
 
     fn test_unary_operators() {
-        let a = mat64![[2.0 + ]];
+        // let a = mat64![[2.0 + ]];
     }
 }
