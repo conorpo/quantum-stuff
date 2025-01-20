@@ -1,14 +1,16 @@
 
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, Sub, SubAssign};
-use std::fmt::Display;
+use std::fmt::{Display,Debug};
 use std::f64::consts::PI;
 const TAU: f64 = 2.0 * PI;
 
 // Trait for types allowed as complex number components MARK: Field
-pub trait Field: Copy + PartialEq + Default + From<u8> + PartialOrd + Display + Into<f64> + 
-             Add<Self, Output = Self> + AddAssign<Self> + Sub<Self, Output = Self> + SubAssign<Self> + Neg<Output = Self> +
-             Mul<Self, Output = Self> + MulAssign<Self> + Div<Self, Output = Self> + DivAssign<Self> + Rem<Self, Output = Self>
+pub trait Field: Copy + PartialEq + Default + From<u8> + PartialOrd + Display + Into<f64> + Debug +
+Add<Self, Output = Self> + AddAssign<Self> + Sub<Self, Output = Self> + SubAssign<Self> + Neg<Output = Self> +
+Mul<Self, Output = Self> + MulAssign<Self> + Div<Self, Output = Self> + DivAssign<Self> + Rem<Self, Output = Self>
 {
+    // Only way to get around this fuzzy equivalnce is to abandon IEEE float representation, not doing that for this toy implementation.
+    const EPSILON: Self;
     fn sqrt(self) -> Self;
     fn abs(self) -> Self;
     fn atan2(self, other: Self) -> Self;
@@ -16,6 +18,8 @@ pub trait Field: Copy + PartialEq + Default + From<u8> + PartialOrd + Display + 
 }
 
 impl Field for f32 {
+    const EPSILON: Self = f32::EPSILON * 10.0;
+
     fn sqrt(self) -> Self {
         self.sqrt()
     }
@@ -34,6 +38,8 @@ impl Field for f32 {
 }
 
 impl Field for f64 {
+    const EPSILON: Self = f64::EPSILON * 10.0;
+
     fn sqrt(self) -> Self {
         self.sqrt()
     }
@@ -118,6 +124,11 @@ impl<F: Field> Complex<F> {
         }
         res
     }
+
+    pub fn fuzzy_equals(self, rhs: Self) -> bool {
+        (self.r - rhs.r).abs() < F::EPSILON &&
+        (self.i - rhs.i).abs() < F::EPSILON
+    }
 }
 
 impl<F: Field> From<Complex<F>> for ComplexP<F> {
@@ -158,10 +169,10 @@ macro_rules! c32 {
 macro_rules! c64 {
     ($r: literal $(+)? $($i: literal i)?) => {
         {
-            let mut r = $r as f64;
-            let mut i = 0.0;
+            let r = $r as f64;
+            let i = 0.0;
             $(
-                i = $i as f64;
+                let i = $i as f64;
             )?
 
             Complex::new(r,i)
