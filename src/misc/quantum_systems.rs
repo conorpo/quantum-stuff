@@ -1,9 +1,9 @@
 
 use std::slice::Iter;
 
-use crate::vector::*;
+use crate::static_::vector::*;
+use crate::static_::matrix::*;
 use crate::complex::*;
-use crate::matrix::*;
 
 pub fn discrete_points<const N: usize>(initial: &Vector<N, f64>, target: &Vector<N, f64>) -> f64 {
     //Use canonical basis of vector space

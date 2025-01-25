@@ -80,21 +80,10 @@ impl<F: Field> Default for Complex<F> {
 }
 
 impl<F: Field> Complex<F> {
-    pub fn new(real: F, imaginary: F) -> Self {
+    pub const fn new(real: F, imaginary: F) -> Self {
         Self {
             r: real,
             i: imaginary
-        }
-    }
-
-    pub fn zero() -> Self {
-        Self::default()
-    }
-
-    pub fn one() -> Self {
-        Self {
-            r: 1.into(),
-            i: F::default()
         }
     }
 
@@ -109,8 +98,30 @@ impl<F: Field> Complex<F> {
         (self.r * self.r + self.i * self.i).sqrt()
     }
 
+
+    pub fn fuzzy_equals(self, rhs: Self) -> bool {
+        (self.r - rhs.r).abs() < F::EPSILON &&
+        (self.i - rhs.i).abs() < F::EPSILON
+    }
+}
+
+impl Complex<f32> {
+    pub const fn zero() -> Self {
+        Self {
+            r: 0.0,
+            i: 0.0
+        }
+    }
+
+    pub const fn one() -> Self {
+        Self {
+            r: 1.0,
+            i: 0.0
+        }
+    }
+
     pub fn pow(self, mut exp: u32) -> Self {
-        let mut res = Complex::one();  // Presumably 1 + 0i
+        let mut res = Self::one();  // Presumably 1 + 0i
         let mut mult = self;                    // Base (the 'self' Complex number)
         while exp > 0 {
             // If the current bit (LSB) of 'exp' is 1, multiply 'res' by 'mult'
@@ -124,10 +135,37 @@ impl<F: Field> Complex<F> {
         }
         res
     }
+}
 
-    pub fn fuzzy_equals(self, rhs: Self) -> bool {
-        (self.r - rhs.r).abs() < F::EPSILON &&
-        (self.i - rhs.i).abs() < F::EPSILON
+impl Complex<f64> {
+    pub const fn zero() -> Self {
+        Self {
+            r: 0.0,
+            i: 0.0
+        }
+    }
+
+    pub const fn one() -> Self {
+        Self {
+            r: 1.0,
+            i: 0.0
+        }
+    }
+
+    pub fn pow(self, mut exp: u32) -> Self {
+        let mut res = Self::one();  // Presumably 1 + 0i
+        let mut mult = self;                    // Base (the 'self' Complex number)
+        while exp > 0 {
+            // If the current bit (LSB) of 'exp' is 1, multiply 'res' by 'mult'
+            if exp % 2 == 1 {
+                res *= mult;
+            }
+            // Shift exponent to the right by 1 bit
+            exp >>= 1;
+            // Square 'mult' for the next iteration
+            mult *= mult;
+        }
+        res
     }
 }
 
@@ -160,7 +198,7 @@ macro_rules! c32 {
                 i = $i as f32;
             )?
 
-            Complex::new(r,i)
+            Complex::<f32>::new(r,i)
         }
     }
 }
@@ -175,7 +213,7 @@ macro_rules! c64 {
                 let i = $i as f64;
             )?
 
-            Complex::new(r,i)
+            Complex::<f64>::new(r,i)
         }
     }
 }

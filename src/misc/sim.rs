@@ -1,6 +1,11 @@
 use std::array;
 
-use crate::{vector::*, complex::*, matrix::*};
+use crate::complex::*;
+use crate::static_::{
+    matrix::*,
+    vector::*
+};
+
 fn dynamic_system<const N: usize, F: Field>(initial: &Vector<N, F>, dynamics: &Matrix<N,N,F>, time_steps: usize) -> Vector<N,F> {
     //Test valid dynamics matrix
     let mut res: Matrix<N,N, F> = Matrix::eye();
@@ -84,8 +89,10 @@ where [(); SLITS + TARGETS + 1]: {
 mod tests {
     use std::vec;
 
-    use crate::vector::*;
-    use crate::matrix::*;
+    use crate::static_::{
+        matrix::*,
+        vector::*
+    };
     use crate::complex::*;
     use super::*;
 

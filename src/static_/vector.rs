@@ -2,47 +2,48 @@ use std::array;
 
 #[macro_use]
 use crate::complex::*;
+use std::slice::Iter;
 
 #[derive(Clone, PartialEq, Debug)]
-pub struct Vector<const N: usize, F: Field> {
-    pub data: [Complex<F>; N]
+pub struct Vector<const N: usize> {
+    pub data: [Complex::<f64>; N]
 }
-
-pub trait VectorT {}
-
-impl<const N: usize, F: Field> VectorT for Vector<N, F> {}
 
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, Sub, SubAssign};
 
 // MARK: Vector
-impl<const N: usize, F: Field> Vector<N,F> {
-    pub fn new(components: [Complex<F>; N]) -> Self {
+impl<const N: usize> Vector<N> {
+    pub fn new(components: [Complex::<f64>; N]) -> Self {
         Self {
             data: components
         }
     }
 
-    pub fn zero() -> Self {
+    pub const fn zero() -> Self {
         Self {
-            data: array::from_fn(|_| Complex::zero())
+            data: [Complex::<f64>::zero(); N]
         }
     }   
 
-    pub fn dot(&self, rhs: &Self) -> Complex<F> {
-        let mut result = Complex::zero();
+    pub fn iter(&self) -> Iter<'_, Complex::<f64>> {
+        self.data.iter()
+    }
+
+    pub fn dot(&self, rhs: &Self) -> Complex::<f64> {
+        let mut result = Complex::<f64>::zero();
         for i in 0..N {
             result += self.data[i].conjugate() * rhs.data[i];
         }
         result
     }
 
-    pub fn norm(&self) -> F {
+    pub fn norm(&self) -> f64 {
         let self_dot_self = self.dot(&self);
-        debug_assert_eq!(self_dot_self.i, F::default());
+        debug_assert_eq!(self_dot_self.i, f64::default());
         self_dot_self.r.sqrt()
     }
 
-    pub fn distance(&self, other: &Self) -> F {
+    pub fn distance(&self, other: &Self) -> f64 {
         let dif_vec = self.clone() - other;
         dif_vec.norm()
     }
@@ -51,8 +52,8 @@ impl<const N: usize, F: Field> Vector<N,F> {
         self.data.iter().zip(rhs.data.iter()).all(|(a,b)| a.fuzzy_equals(*b))
     }
 
-    pub fn tensor_product<const N_2:usize>(&self, rhs: &Vector<N_2,F>) -> Vector<{N * N_2}, F> {
-        let mut data = [Complex::<F>::default(); {N * N_2}];
+    pub fn tensor_product<const N_2:usize>(&self, rhs: &Vector<N_2>) -> Vector<{N * N_2}> {
+        let mut data = [Complex::<f64>::default(); {N * N_2}];
         for i in 0..N {
             for j in 0..N_2 {
                 data[i * N_2 + j] = self.data[i] * rhs.data[j];
@@ -65,8 +66,8 @@ impl<const N: usize, F: Field> Vector<N,F> {
     }
 
     //Entry wise modulus squared
-    pub fn probabilities(&self) -> [F; N] {
-        let mut res = [F::default(); N];
+    pub fn probabilities(&self) -> [f64; N] {
+        let mut res = [f64::default(); N];
         for (i, entry) in self.data.iter().enumerate() {
             res[i] = (*entry * entry.conjugate()).r;
         }
@@ -74,7 +75,7 @@ impl<const N: usize, F: Field> Vector<N,F> {
     }
 }
 
-impl<const N: usize, F: Field> AddAssign<&Self> for Vector<N, F> {
+impl<const N: usize> AddAssign<&Self> for Vector<N> {
     fn add_assign(&mut self, rhs: &Self) {
         for (i, comp) in self.data.iter_mut().enumerate() {
             *comp += rhs.data[i];
@@ -83,7 +84,7 @@ impl<const N: usize, F: Field> AddAssign<&Self> for Vector<N, F> {
 }
 
 
-impl<const N: usize, F: Field> Add<&Self> for Vector<N, F> {
+impl<const N: usize> Add<&Self> for Vector<N> {
     type Output = Self;
 
     fn add(mut self, rhs: &Self) -> Self::Output {
@@ -94,7 +95,7 @@ impl<const N: usize, F: Field> Add<&Self> for Vector<N, F> {
     }
 }
 
-impl<const N: usize, F: Field> SubAssign<&Self> for Vector<N, F> {
+impl<const N: usize> SubAssign<&Self> for Vector<N> {
     fn sub_assign(&mut self, rhs: &Self) {
         for (i, comp) in self.data.iter_mut().enumerate() {
             comp.sub_assign(rhs.data[i]);
@@ -102,7 +103,7 @@ impl<const N: usize, F: Field> SubAssign<&Self> for Vector<N, F> {
     }
 }
 
-impl<const N: usize, F: Field> Sub<&Self> for Vector<N,F> {
+impl<const N: usize> Sub<&Self> for Vector<N> {
     type Output = Self;
 
     fn sub(mut self, rhs: &Self) -> Self::Output {
@@ -113,8 +114,8 @@ impl<const N: usize, F: Field> Sub<&Self> for Vector<N,F> {
     }
 }
 
-impl<const N: usize, F: Field> Neg for Vector<N, F> {
-    type Output = Vector<N, F>;
+impl<const N: usize> Neg for Vector<N> {
+    type Output = Vector<N>;
 
     fn neg(mut self) -> Self::Output {
         for comp in self.data.iter_mut() {
@@ -124,8 +125,8 @@ impl<const N: usize, F: Field> Neg for Vector<N, F> {
     }
 }
 
-impl<const N: usize, F: Field> MulAssign<Complex<F>> for Vector<N, F> {
-    fn mul_assign(&mut self, rhs: Complex<F>) {
+impl<const N: usize> MulAssign<Complex::<f64>> for Vector<N> {
+    fn mul_assign(&mut self, rhs: Complex::<f64>) {
         for comp in self.data.iter_mut() {
             comp.mul_assign(rhs);
         }
@@ -133,9 +134,9 @@ impl<const N: usize, F: Field> MulAssign<Complex<F>> for Vector<N, F> {
 }
 
 
-impl<const N: usize, F: Field> Mul<Complex<F>> for Vector<N, F> {
+impl<const N: usize> Mul<Complex::<f64>> for Vector<N> {
     type Output = Self;
-    fn mul(mut self, rhs: Complex<F>) -> Self::Output {
+    fn mul(mut self, rhs: Complex::<f64>) -> Self::Output {
         for comp in self.data.iter_mut() {
             comp.mul_assign(rhs);
         }
@@ -143,33 +144,22 @@ impl<const N: usize, F: Field> Mul<Complex<F>> for Vector<N, F> {
     }
 }
 
+#[macro_export]
 macro_rules! vec64 {
     [$($r:literal $(+)? $($i:literal i)?),* ] => {
-        Vector::new(
+        crate::static_::vector::Vector::new(
             [$({
                 let mut i = 0.0;
                 $(
                     i = $i as f64;
                 )?
-                Complex::new($r as f64, i)
+                Complex::<f64>::new($r as f64, i)
             }),*]
         )
     };
 }
 
-macro_rules! vec32 {
-    [$($r:literal $(+)? $($i:literal i)?),* ] => {
-        Vector::new(
-            [$({
-                let mut i = 0.0;
-                $(
-                    i = $i as f32;
-                )?
-                Complex::new($r as f32, i)
-            }),*]
-        )
-    };
-}
+
 
 #[cfg(test)]
 mod tests {
@@ -179,18 +169,18 @@ mod tests {
     use super::*;
     #[test]
     fn test_ops() {
-        let a = Complex::new(1.0, 2.0);
-        let b = Complex::new(-2.0, -4.0);
+        let a = Complex::<f64>::new(1.0, 2.0);
+        let b = Complex::<f64>::new(-2.0, -4.0);
         let c = a + b;
 
-        let mut va = Vector::<4,f64>::new(array::from_fn(|_| a));
+        let mut va = Vector::<4>::new(array::from_fn(|_| a));
         let vb = Vector::new(array::from_fn(|_| b));
         let vc = Vector::new(array::from_fn(|_| c));
 
         assert_eq!(vb.clone() + &va, vc);
         assert_eq!(-va.clone(), vc);
         
-        va *= Complex::new(-2.0,0.0);
+        va *= Complex::<f64>::new(-2.0,0.0);
         assert_eq!(va, vb);
     }
 
@@ -200,7 +190,7 @@ mod tests {
         assert!(a.dot(&a).r > 0.0);
 
         let b = vec64![0.0, 0.0];
-        assert_eq!(b.dot(&b), Complex::zero());
+        assert_eq!(b.dot(&b), Complex::<f64>::zero());
 
         let mut a = vec64![1.0 + 2.0 i, -2.0 - 3.0 i];
         let mut b = vec64![1.0 - 2.0 i, 2.0 + 3.0 i];
@@ -211,12 +201,12 @@ mod tests {
         assert!(a.dot(&b_c) == a.dot(&b) + a.dot(&c));
 
         let a_dot_b = a.dot(&b);
-        b *= Complex::new(2.0,1.0);
-        assert_eq!(a.dot(&b), a_dot_b * Complex::new(2.0,1.0));
+        b *= Complex::<f64>::new(2.0,1.0);
+        assert_eq!(a.dot(&b), a_dot_b * Complex::<f64>::new(2.0,1.0));
 
         let a_dot_c = a.dot(&c);
-        a *= Complex::new(2.0,1.0);
-        assert_eq!(a.dot(&c), a_dot_c * Complex::new(2.0,1.0).conjugate());
+        a *= Complex::<f64>::new(2.0,1.0);
+        assert_eq!(a.dot(&c), a_dot_c * Complex::<f64>::new(2.0,1.0).conjugate());
     }
 
     #[test]

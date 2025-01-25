@@ -1,6 +1,6 @@
 // use faer_evd::*;
 // use faer_core::Parallelism;
-// use num_complex::Complex;
+// use num_complex::<f64>::Complex;
 
 use crate::complex::*;
 use super::vector::*;
@@ -10,16 +10,12 @@ use std::ops::{Add, AddAssign, Neg, Sub, SubAssign, Mul, MulAssign};
 
 //These being const make an emulator nearly impossible in Rust, I can't possible know the size of the matrices at compile time.
 // Gonna split this up into a dynamic implementation vs static.
-pub struct Matrix<const M: usize, const N: usize, F: Field> {
-    pub data: [[Complex<F>;N];M]
+pub struct Matrix<const M: usize, const N: usize> {
+    pub data: [[Complex<f64>;N];M]
 }
 
-pub trait MatrixT {}
-
-impl<const M: usize, F: Field> MatrixT for Matrix<M,M,F> {}
-
-impl<const M: usize, const N: usize, F: Field> Matrix<M,N,F> {
-    pub fn new(data: [[Complex<F>;N];M]) -> Self {
+impl<const M: usize, const N: usize> Matrix<M,N> {
+    pub const fn new(data: [[Complex<f64>;N];M]) -> Self {
         Self {
             data
         }
@@ -27,17 +23,19 @@ impl<const M: usize, const N: usize, F: Field> Matrix<M,N,F> {
 
     pub fn eye() -> Self
     {
-        let mut data = [[Complex::zero();N];M];
+        let mut data = [[Complex::<f64>::zero(); N]; M];
+
         for i in 0..N.min(M) {
-            data[i][i] = Complex::one()
+            data[i][i] = Complex::<f64>::one();
         }
+
         Self {
             data
         }
     }
 
-    pub fn as_transpose(&self) -> Matrix<N,M,F> {
-        let mut data = [[Complex::zero();M];N];
+    pub fn as_transpose(&self) -> Matrix<N,M> {
+        let mut data = [[Complex::<f64>::zero();M];N];
 
         for i in 0..N {
             for j in 0..M {
@@ -45,13 +43,13 @@ impl<const M: usize, const N: usize, F: Field> Matrix<M,N,F> {
             }
         }
 
-        Matrix::<N,M,F> {
+        Matrix::<N,M> {
             data
         } 
     }
 
     pub fn as_conjugate(&self) -> Self {
-        let mut data = [[Complex::zero();N];M];
+        let mut data = [[Complex::<f64>::zero();N];M];
         for i in 0..M {
             for j in 0..N {
                 data[i][j] = self.data[i][j].conjugate();
@@ -63,8 +61,8 @@ impl<const M: usize, const N: usize, F: Field> Matrix<M,N,F> {
         }
     }
 
-    pub fn as_adjoint(&self) -> Matrix<N,M,F> {
-        let mut data = [[Complex::zero();M];N];
+    pub fn as_adjoint(&self) -> Matrix<N,M> {
+        let mut data = [[Complex::<f64>::zero();M];N];
 
         for i in 0..N {
             for j in 0..M {
@@ -72,7 +70,7 @@ impl<const M: usize, const N: usize, F: Field> Matrix<M,N,F> {
             }
         }
 
-        Matrix::<N,M,F> {
+        Matrix::<N,M> {
             data
         } 
     }
@@ -99,11 +97,11 @@ impl<const M: usize, const N: usize, F: Field> Matrix<M,N,F> {
         let a = &adj * self;
         let b = self * &adj;
         
-        a.fuzzy_equals(&Matrix::<N,N,F>::eye()) && b.fuzzy_equals(&Matrix::<M,M,F>::eye())
+        a.fuzzy_equals(&Matrix::<N,N>::eye()) && b.fuzzy_equals(&Matrix::<M,M>::eye())
     }
 
-    pub fn tensor_product<const M2:usize , const N2: usize>(&self, rhs: &Matrix<M2, N2, F>) -> Matrix<{M * M2}, {N * N2}, F> {
-        let mut data = [[Complex::<F>::default(); {N * N2}]; {M * M2}];
+    pub fn tensor_product<const M2:usize , const N2: usize>(&self, rhs: &Matrix<M2, N2>) -> Matrix<{M * M2}, {N * N2}> {
+        let mut data = [[Complex::default(); {N * N2}]; {M * M2}];
 
         for i in 0..M {
             for j in 0..N {
@@ -129,7 +127,8 @@ impl<const M: usize, const N: usize, F: Field> Matrix<M,N,F> {
     // }
 }
 
-impl<const M: usize, const N: usize, F: Field> Add<&Self> for Matrix<M,N,F> {
+
+impl<const M: usize, const N: usize> Add<&Self> for Matrix<M,N> {
     type Output = Self;
 
     fn add(mut self, rhs: &Self) -> Self::Output {
@@ -142,7 +141,7 @@ impl<const M: usize, const N: usize, F: Field> Add<&Self> for Matrix<M,N,F> {
     }
 }
 
-impl<const M: usize, const N: usize, F: Field> AddAssign<&Self> for Matrix<M,N,F> {
+impl<const M: usize, const N: usize> AddAssign<&Self> for Matrix<M,N> {
     fn add_assign(&mut self, rhs: &Self) {
         for (r, row) in self.data.iter_mut().enumerate() {
             for (c,entry) in row.iter_mut().enumerate() {
@@ -152,7 +151,7 @@ impl<const M: usize, const N: usize, F: Field> AddAssign<&Self> for Matrix<M,N,F
     }
 }
 
-impl<const M: usize, const N: usize, F: Field> Neg for Matrix<M,N,F> {
+impl<const M: usize, const N: usize> Neg for Matrix<M,N> {
     type Output = Self;
 
     fn neg(mut self) -> Self::Output {
@@ -165,7 +164,7 @@ impl<const M: usize, const N: usize, F: Field> Neg for Matrix<M,N,F> {
     }
 }
 
-impl<const M: usize, const N: usize, F: Field> Sub<&Self> for Matrix<M,N,F> {
+impl<const M: usize, const N: usize> Sub<&Self> for Matrix<M,N> {
     type Output = Self;
 
     fn sub(mut self, rhs: &Self) -> Self::Output {
@@ -178,7 +177,7 @@ impl<const M: usize, const N: usize, F: Field> Sub<&Self> for Matrix<M,N,F> {
     }
 }
 
-impl<const M: usize, const N: usize, F: Field> SubAssign<&Self> for Matrix<M,N,F> {
+impl<const M: usize, const N: usize> SubAssign<&Self> for Matrix<M,N> {
     fn sub_assign(&mut self, rhs: &Self) {
         for (r, row) in self.data.iter_mut().enumerate() {
             for (c,entry) in row.iter_mut().enumerate() {
@@ -189,9 +188,9 @@ impl<const M: usize, const N: usize, F: Field> SubAssign<&Self> for Matrix<M,N,F
 }
 
 //Scalar Multiplication
-impl<const M: usize, const N: usize, F: Field> Mul<Complex<F>> for Matrix<M,N,F> {
+impl<const M: usize, const N: usize> Mul<Complex<f64>> for Matrix<M,N> {
     type Output = Self;
-    fn mul(mut self, rhs: Complex<F>) -> Self::Output {
+    fn mul(mut self, rhs: Complex<f64>) -> Self::Output {
         for row in self.data.iter_mut() {
             for entry in row.iter_mut() {
                 entry.mul_assign(rhs);
@@ -201,8 +200,8 @@ impl<const M: usize, const N: usize, F: Field> Mul<Complex<F>> for Matrix<M,N,F>
     }
 }
 
-impl<const M: usize, const N: usize, F: Field> MulAssign<Complex<F>> for Matrix<M,N,F> {
-    fn mul_assign(&mut self, rhs: Complex<F>) {
+impl<const M: usize, const N: usize> MulAssign<Complex<f64>> for Matrix<M,N> {
+    fn mul_assign(&mut self, rhs: Complex<f64>) {
         for row in self.data.iter_mut() {
             for entry in row.iter_mut() {
                 entry.mul_assign(rhs);
@@ -212,13 +211,13 @@ impl<const M: usize, const N: usize, F: Field> MulAssign<Complex<F>> for Matrix<
 }
 
 //Action on Vectors
-impl<const M: usize, const N: usize, F: Field> Mul<&Vector<N,F>> for &Matrix<M,N,F>  {
-    type Output = Vector<M,F>;
+impl<const M: usize, const N: usize> Mul<&Vector<N>> for &Matrix<M,N>  {
+    type Output = Vector<M>;
 
-    fn mul(self, rhs: &Vector<N,F>) -> Vector<M,F> {
-        let mut data = [Complex::zero(); M];
+    fn mul(self, rhs: &Vector<N>) -> Vector<M> {
+        let mut data = [Complex::<f64>::zero(); M];
         for (r, row) in self.data.iter().enumerate() {
-            data[r] = row.iter().zip(rhs.data.iter()).fold(Complex::zero(),|acc, (m, v)| acc + *m * *v);
+            data[r] = row.iter().zip(rhs.data.iter()).fold(Complex::<f64>::zero(),|acc, (m, v)| acc + *m * *v);
         }
         Self::Output {
            data
@@ -227,15 +226,15 @@ impl<const M: usize, const N: usize, F: Field> Mul<&Vector<N,F>> for &Matrix<M,N
 }
 
 //Matrix Multiplication
-impl<const M: usize, const N: usize, const P: usize, F: Field> Mul<&Matrix<N,P,F>> for &Matrix<M,N,F> {
-    type Output = Matrix<M,P,F>;
+impl<const M: usize, const N: usize, const P: usize> Mul<&Matrix<N,P>> for &Matrix<M,N> {
+    type Output = Matrix<M,P>;
 
-    fn mul(self, rhs: &Matrix<N,P,F>) -> Self::Output {
-        let mut data = [[Complex::zero();P];M];
+    fn mul(self, rhs: &Matrix<N,P>) -> Self::Output {
+        let mut data = [[Complex::<f64>::zero();P];M];
 
         for c in 0..P {
             for r in 0..M {
-                data[r][c] = self.data[r].iter().enumerate().fold(Complex::zero(), |acc, (n, cur)| {
+                data[r][c] = self.data[r].iter().enumerate().fold(Complex::<f64>::zero(), |acc, (n, cur)| {
                     acc + *cur * rhs.data[n][c]
                 })
             }
@@ -256,22 +255,7 @@ macro_rules! mat64 {
                 $(
                    let i = $i as f64;
                 )?
-                Complex::new($r as f64, i)
-            }),*]
-        ),*])
-    };
-}
-
-#[macro_export]
-macro_rules! mat32 {
-    [$([$($r:literal $(+)? $($i:literal i)?),* ]),*] => {
-        Matrix::new([$(
-            [$({
-                let mut i = 0.0;
-                $(
-                    i = $i as f32;
-                )?
-                Complex::new($r as f32, i)
+                Complex::<f64>::new($r as f64, i)
             }),*]
         ),*])
     };
@@ -285,23 +269,23 @@ mod tests {
 
     #[test]
     fn test_vector_space() {
-        let a = Matrix::new([[Complex::new(1.0,-1.0), Complex::new(3.0,0.0)],[Complex::new(2.0,2.0), Complex::new(4.0, 1.0)]]);
-        assert_eq!(a.clone() + &a, a.clone() * Complex::new(2.0,0.0));
-        assert_eq!(-a.clone() - &a, a * Complex::new(-2.0, 0.0));
+        let a = Matrix::new([[Complex::<f64>::new(1.0,-1.0), Complex::<f64>::new(3.0,0.0)],[Complex::<f64>::new(2.0,2.0), Complex::<f64>::new(4.0, 1.0)]]);
+        assert_eq!(a.clone() + &a, a.clone() * Complex::<f64>::new(2.0,0.0));
+        assert_eq!(-a.clone() - &a, a * Complex::<f64>::new(-2.0, 0.0));
     }
 
     #[test]
     fn test_matrix_multiplication() {
-        let a = Matrix::new([[Complex::new(3.0, 2.0), Complex::new(0.0,0.0), Complex::new(5.0,-6.0)],
-                             [Complex::new(1.0,0.0),Complex::new(4.0,2.0), Complex::new(0.0, 1.0)],
-                             [Complex::new(4.0, -1.0), Complex::new(0.0, 0.0), Complex::new(4.0,0.0)]]);
-        let b = Matrix::new([[Complex::new(5.0,0.0), Complex::new(2.0, -1.0), Complex::new(6.0, -4.0)],
-                             [Complex::new(0.0, 0.0), Complex::new(4.0, 5.0), Complex::new(2.0,0.0)],
-                             [Complex::new(7.0, -4.0), Complex::new(2.0,7.0), Complex::new(0.0, 0.0)]]);
+        let a = Matrix::new([[Complex::<f64>::new(3.0, 2.0), Complex::<f64>::new(0.0,0.0), Complex::<f64>::new(5.0,-6.0)],
+                             [Complex::<f64>::new(1.0,0.0),Complex::<f64>::new(4.0,2.0), Complex::<f64>::new(0.0, 1.0)],
+                             [Complex::<f64>::new(4.0, -1.0), Complex::<f64>::new(0.0, 0.0), Complex::<f64>::new(4.0,0.0)]]);
+        let b = Matrix::new([[Complex::<f64>::new(5.0,0.0), Complex::<f64>::new(2.0, -1.0), Complex::<f64>::new(6.0, -4.0)],
+                             [Complex::<f64>::new(0.0, 0.0), Complex::<f64>::new(4.0, 5.0), Complex::<f64>::new(2.0,0.0)],
+                             [Complex::<f64>::new(7.0, -4.0), Complex::<f64>::new(2.0,7.0), Complex::<f64>::new(0.0, 0.0)]]);
         
-        let ab = Matrix::new([[Complex::new(26.0,-52.0), Complex::new(60.0, 24.0), Complex::new(26.0,0.0)],
-                              [Complex::new(9.0, 7.0), Complex::new(1.0, 29.0), Complex::new(14.0,0.0)],
-                              [Complex::new(48.0, -21.0), Complex::new(15.0, 22.0), Complex::new(20.0, -22.0)]]);
+        let ab = Matrix::new([[Complex::<f64>::new(26.0,-52.0), Complex::<f64>::new(60.0, 24.0), Complex::<f64>::new(26.0,0.0)],
+                              [Complex::<f64>::new(9.0, 7.0), Complex::<f64>::new(1.0, 29.0), Complex::<f64>::new(14.0,0.0)],
+                              [Complex::<f64>::new(48.0, -21.0), Complex::<f64>::new(15.0, 22.0), Complex::<f64>::new(20.0, -22.0)]]);
 
         assert_eq!(&a * &b, ab);
     }

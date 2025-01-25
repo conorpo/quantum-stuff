@@ -1,5 +1,6 @@
 #[macro_use]
 use crate::complex::*;
+use std::slice::Iter;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Vector<F: Field> {
@@ -14,6 +15,10 @@ impl<F: Field> Vector<F> {
         Self {
             data: vec![Complex::zero(); n]
         }
+    }
+
+    pub fn iter(&self) -> Iter<'_, Complex<F>> {
+        self.data.iter()
     }
 
     pub fn from_iter(iter: impl Iterator<Item = Complex<F>>, size_hint: Option<usize>) -> Self {
@@ -37,8 +42,22 @@ impl<F: Field> Vector<F> {
         }
     }
 
+    pub fn deterministic(n: usize, state: usize) -> Result<Self, ()> {
+        if state >= n {
+            return Err(());
+        }
+
+        let mut vec = Self::zero(n);
+        vec.data[state] = Complex::one();
+        Ok(vec)
+    }
+
     pub fn dim(&self) -> usize {
         self.data.len()
+    }
+
+    pub fn get(&self, index: usize) -> Complex<F> {
+        self.data[index]
     }
 
     pub fn norm(&self) -> F {
@@ -83,6 +102,7 @@ impl<F: Field> Vector<F> {
 
 impl<F: Field> AddAssign<&Self> for Vector<F> {
     fn add_assign(&mut self, rhs: &Self) {
+        debug_assert_eq!(self.dim(), rhs.dim());
         for (i, comp) in self.data.iter_mut().enumerate() {
             *comp += rhs.data[i];
         }
@@ -91,18 +111,22 @@ impl<F: Field> AddAssign<&Self> for Vector<F> {
 
 
 impl<F: Field> Add<&Self> for Vector<F> {
-    type Output = Self;
+    type Output = Result<Self, ()>;
 
     fn add(mut self, rhs: &Self) -> Self::Output {
-        for (i, comp) in self.data.iter_mut().enumerate() {
-            comp.add_assign(rhs.data[i]);
+        if self.dim() != rhs.dim() {return Err(()); }
+
+        for (i, elem) in self.data.iter_mut().enumerate() {
+            elem.add_assign(rhs.get(i));
         }
-        self
+        
+        Ok(self)
     }
 }
 
 impl<F: Field> SubAssign<&Self> for Vector<F> {
     fn sub_assign(&mut self, rhs: &Self) {
+        debug_assert_eq!(self.dim(), rhs.dim());
         for (i, comp) in self.data.iter_mut().enumerate() {
             comp.sub_assign(rhs.data[i]);
         }
@@ -110,13 +134,14 @@ impl<F: Field> SubAssign<&Self> for Vector<F> {
 }
 
 impl<F: Field> Sub<&Self> for Vector<F> {
-    type Output = Self;
+    type Output = Result<Self, ()>;
 
     fn sub(mut self, rhs: &Self) -> Self::Output {
+        if self.dim() != rhs.dim() {return Err(()); }
         for (i, comp) in self.data.iter_mut().enumerate() {
             comp.sub_assign(rhs.data[i]);
         }
-        self
+        Ok(self)
     }
 }
 
@@ -150,7 +175,8 @@ impl<F: Field> Mul<Complex<F>> for Vector<F> {
     }
 }
 
-macro_rules! vec64 {
+#[macro_export]
+macro_rules! dvec64 {
     [$($r:literal $(+)? $($i:literal i)?),* ] => {
         Vector::from_iter(
             [$({
@@ -164,7 +190,8 @@ macro_rules! vec64 {
     };
 }
 
-macro_rules! vec32 {
+#[macro_export]
+macro_rules! dvec32 {
     [$($r:literal $(+)? $($i:literal i)?),* ] => {
         Vector::from_iter(
             [$({
@@ -194,7 +221,7 @@ mod tests {
         let mut vb = Vector::<f64>::from_iter((0..4).map(|_| b), Some(4));
         let mut vc = Vector::<f64>::from_iter((0..4).map(|_| c), Some(4));
 
-        assert_eq!(vb.clone() + &va, vc);
+        assert_eq!((vb.clone() + &va).unwrap(), vc);
         assert_eq!(-va.clone(), vc);
         
         va *= Complex::new(-2.0,0.0);
@@ -203,18 +230,18 @@ mod tests {
 
     #[test]
     fn test_inner_product() {
-        let a = vec64![1.0 - 1.0 i, 3.0];
+        let a = dvec64![1.0 - 1.0 i, 3.0];
         assert!(a.dot(&a).unwrap().r > 0.0);
 
-        let b = vec64![0.0, 0.0];
+        let b = dvec64![0.0, 0.0];
         assert_eq!(b.dot(&b).unwrap(), Complex::zero());
 
-        let mut a = vec64![1.0 + 2.0 i, -2.0 - 3.0 i];
-        let mut b = vec64![1.0 - 2.0 i, 2.0 + 3.0 i];
-        let c = vec64![2.0 + 3.0 i, 3.0 - 2.0 i];
+        let mut a = dvec64![1.0 + 2.0 i, -2.0 - 3.0 i];
+        let mut b = dvec64![1.0 - 2.0 i, 2.0 + 3.0 i];
+        let c = dvec64![2.0 + 3.0 i, 3.0 - 2.0 i];
 
         assert!(a.dot(&b).unwrap() == b.dot(&a).unwrap().conjugate());
-        let b_c = b.clone() + &c;
+        let b_c = (b.clone() + &c).unwrap();
         assert!(a.dot(&b_c).unwrap() == a.dot(&b).unwrap() + a.dot(&c).unwrap());
 
         let a_dot_b = a.dot(&b).unwrap();
@@ -228,14 +255,14 @@ mod tests {
 
     #[test]
     fn test_norm_and_distance() {
-        let a = vec64![3, -6, 2];
+        let a = dvec64![3, -6, 2];
         assert_eq!(a.norm(), 7.0);
         let c = c64!(2.0 + 1 i);
         let a = a * c;
         assert_eq!(a.norm(), 7.0 * c.modulus()); //Respects Scalar Multiplication
 
-        let a = vec64![3,1,2];
-        let b = vec64![2,2,-1];
+        let a = dvec64![3,1,2];
+        let b = dvec64![2,2,-1];
         assert_eq!(a.distance(&b), 11.0.sqrt()); 
         assert_eq!(a.distance(&a), 0.0);
         assert_eq!(a.distance(&b), b.distance(&a)); //Symmetric
@@ -243,10 +270,10 @@ mod tests {
 
     #[test]
     fn test_tensor_product() {
-        let a = vec64![2,3];
-        let b = vec64![4,6,3];
+        let a = dvec64![2,3];
+        let b = dvec64![4,6,3];
 
-        let ab = vec64![8,12,6,12,18,9];
+        let ab = dvec64![8,12,6,12,18,9];
 
         assert!(a.tensor_product(&b).fuzzy_equals(&ab));
 

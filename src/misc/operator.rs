@@ -20,7 +20,7 @@ pub fn variance<const N: usize, F: Field>(observable: &Matrix<N,N,F>, state: &Ve
 
 #[cfg(test)]
 mod tests {
-    use crate::operator::{expected_value, variance};
+    use crate::misc::operator::{expected_value, variance};
     use crate::{
         static_::vector::*,
         complex::*,
