@@ -1,11 +1,11 @@
 
 use std::slice::Iter;
 
-use crate::static_::vector::*;
+use crate::static_::state::*;
 use crate::static_::matrix::*;
 use crate::complex::*;
 
-pub fn discrete_points<const N: usize>(initial: &Vector<N, f64>, target: &Vector<N, f64>) -> f64 {
+pub fn discrete_points<const N: usize>(initial: &State<N, f64>, target: &State<N, f64>) -> f64 {
     //Use canonical basis of vector space
     let norm_i_squared = initial.dot(&initial).r;
     let norm_t_squared = target.dot(&target).r;
@@ -17,20 +17,20 @@ pub fn discrete_points<const N: usize>(initial: &Vector<N, f64>, target: &Vector
     (transition_amplitude_unnormalized * transition_amplitude_unnormalized.conjugate()).r / (norm_i_squared * norm_t_squared)
 }
 
-pub fn probability_at_point<const N: usize>(initial: &Vector<N, f64>, at: usize) -> f64 {
+pub fn probability_at_point<const N: usize>(initial: &State<N, f64>, at: usize) -> f64 {
     let mut target_data = [Complex::default(); N];
     if let Some(at) = target_data.get_mut(at) {
         at.r = 1.0;
     }
 
-    let target = Vector {
+    let target = State {
         data: target_data
     };
 
     discrete_points(initial, &target)
 }
 
-pub fn dynamic_system<'a,const N: usize, F: Field + 'a>(initial: &Vector<N,F>, mut dynamics_iter: impl Iterator<Item = &'a Matrix<N,N,F>>) -> Vector<N,F> {
+pub fn dynamic_system<'a,const N: usize, F: Real + 'a>(initial: &State<N,F>, mut dynamics_iter: impl Iterator<Item = &'a Matrix<N,N,F>>) -> State<N,F> {
     let mut cur = initial.clone();
     while let Some(mat) = dynamics_iter.next() {
         cur = mat * &cur;
@@ -71,6 +71,6 @@ mod tests {
         });
 
         let end = dynamic_system(&initial, dynamics_iter);
-        assert!(end.fuzzy_equals(&Vector::new([c64!(0),Complex::new(-1.0 / 2.0.sqrt(),1.0 / 2.0.sqrt()),c64!(0),c64!(0)])));
+        assert!(end.fuzzy_equals(&State::new([c64!(0),Complex::new(-1.0 / 2.0.sqrt(),1.0 / 2.0.sqrt()),c64!(0),c64!(0)])));
     }
 }

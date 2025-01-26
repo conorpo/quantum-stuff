@@ -3,14 +3,14 @@ use crate::complex::*;
 use std::slice::Iter;
 
 #[derive(Clone, PartialEq, Debug)]
-pub struct Vector<F: Field> {
+pub struct Vector<F: Real> {
     data: Vec<Complex<F>>,
 }
 
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, Sub, SubAssign};
 
 // MARK: Vector
-impl<F: Field> Vector<F> {
+impl<F: Real> Vector<F> {
     pub fn zero(n: usize) -> Self {
         Self {
             data: vec![Complex::zero(); n]
@@ -100,7 +100,7 @@ impl<F: Field> Vector<F> {
     }
 }
 
-impl<F: Field> AddAssign<&Self> for Vector<F> {
+impl<F: Real> AddAssign<&Self> for Vector<F> {
     fn add_assign(&mut self, rhs: &Self) {
         debug_assert_eq!(self.dim(), rhs.dim());
         for (i, comp) in self.data.iter_mut().enumerate() {
@@ -110,7 +110,7 @@ impl<F: Field> AddAssign<&Self> for Vector<F> {
 }
 
 
-impl<F: Field> Add<&Self> for Vector<F> {
+impl<F: Real> Add<&Self> for Vector<F> {
     type Output = Result<Self, ()>;
 
     fn add(mut self, rhs: &Self) -> Self::Output {
@@ -124,7 +124,7 @@ impl<F: Field> Add<&Self> for Vector<F> {
     }
 }
 
-impl<F: Field> SubAssign<&Self> for Vector<F> {
+impl<F: Real> SubAssign<&Self> for Vector<F> {
     fn sub_assign(&mut self, rhs: &Self) {
         debug_assert_eq!(self.dim(), rhs.dim());
         for (i, comp) in self.data.iter_mut().enumerate() {
@@ -133,7 +133,7 @@ impl<F: Field> SubAssign<&Self> for Vector<F> {
     }
 }
 
-impl<F: Field> Sub<&Self> for Vector<F> {
+impl<F: Real> Sub<&Self> for Vector<F> {
     type Output = Result<Self, ()>;
 
     fn sub(mut self, rhs: &Self) -> Self::Output {
@@ -145,7 +145,7 @@ impl<F: Field> Sub<&Self> for Vector<F> {
     }
 }
 
-impl<F: Field> Neg for Vector<F> {
+impl<F: Real> Neg for Vector<F> {
     type Output = Vector<F>;
 
     fn neg(mut self) -> Self::Output {
@@ -156,7 +156,7 @@ impl<F: Field> Neg for Vector<F> {
     }
 }
 
-impl<F: Field> MulAssign<Complex<F>> for Vector<F> {
+impl<F: Real> MulAssign<Complex<F>> for Vector<F> {
     fn mul_assign(&mut self, rhs: Complex<F>) {
         for comp in self.data.iter_mut() {
             comp.mul_assign(rhs);
@@ -165,7 +165,7 @@ impl<F: Field> MulAssign<Complex<F>> for Vector<F> {
 }
 
 
-impl<F: Field> Mul<Complex<F>> for Vector<F> {
+impl<F: Real> Mul<Complex<F>> for Vector<F> {
     type Output = Self;
     fn mul(mut self, rhs: Complex<F>) -> Self::Output {
         for comp in self.data.iter_mut() {

@@ -1,4 +1,4 @@
-use super::vector::*;
+use super::state::*;
 use super::matrix::*;
 use core::num;
 use std::rc::Rc;
@@ -13,7 +13,7 @@ const fn num_qubits_to_size(num_qubits: usize) -> usize {
 struct Register<const SELECT_QUBITS: usize, const REGISTER_QUBITS: usize> 
 where [(); {num_qubits_to_size(REGISTER_QUBITS)}] : ,
 {
-    register: Rc<Cell<Option<Vector<{num_qubits_to_size(REGISTER_QUBITS)}>>>>,
+    register: Rc<Cell<Option<State<{num_qubits_to_size(REGISTER_QUBITS)}>>>>,
     qubit_offset: usize
 }
 
@@ -25,7 +25,7 @@ where [(); {num_qubits_to_size(REGISTER_QUBITS)}] : ,
 
     pub fn new() -> Self {
         Self {
-            register: Rc::new(Cell::new(Some(Vector::zero()))),
+            register: Rc::new(Cell::new(Some(State::zero()))),
             qubit_offset: 0
         }
     }

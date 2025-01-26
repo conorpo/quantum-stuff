@@ -1,7 +1,7 @@
 #[macro_use]
-pub mod vector;
+pub mod state;
+
 #[macro_use]
-pub mod matrix;
+pub mod operator;
 
 pub mod register;
-pub mod gates;

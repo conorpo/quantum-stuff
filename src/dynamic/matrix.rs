@@ -10,12 +10,12 @@ use std::ops::{Add, AddAssign, Neg, Sub, SubAssign, Mul, MulAssign};
 //These being const make an emulator nearly impossible in Rust, I can't possible know the size of the matrices at compile time.
 // Gonna split this up into a dynamic implementation vs static.
 #[derive(Clone, PartialEq, Debug)]
-pub struct Matrix<F: Field> {
+pub struct Matrix<F: Real> {
     dim: (usize, usize),
     data: Vec<Complex<F>>
 }
 
-impl<F: Field> Matrix<F> {
+impl<F: Real> Matrix<F> {
     pub fn from_rows(iter: impl Iterator<Item = Vector<F>>, rows_hint: Option<usize>) -> Result<Self, ()> {
         let mut row_iter = iter.peekable();
         let (mut m, n) = (0, row_iter.peek().map(|row| row.dim()).unwrap_or(0));
@@ -171,7 +171,7 @@ impl<F: Field> Matrix<F> {
     // }
 }
 
-impl<const M: usize, const N: usize, F: Field> From<[[Complex<F>; N];M]> for Matrix<F> {
+impl<const M: usize, const N: usize, F: Real> From<[[Complex<F>; N];M]> for Matrix<F> {
     fn from(arr: [[Complex<F>; N];M]) -> Self {
         let mut data = Vec::with_capacity(N * M);
         let dim = (M, N);
@@ -189,12 +189,12 @@ impl<const M: usize, const N: usize, F: Field> From<[[Complex<F>; N];M]> for Mat
     }
 }
 
-pub struct VecIter<'a, const col_order: bool,  F: Field> {
+pub struct VecIter<'a, const col_order: bool,  F: Real> {
     mat: &'a Matrix<F>,
     index: usize
 }
 
-impl<'a, F:Field> Iterator for VecIter<'a,false, F> {
+impl<'a, F:Real> Iterator for VecIter<'a,false, F> {
     type Item = Vector<F>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -209,7 +209,7 @@ impl<'a, F:Field> Iterator for VecIter<'a,false, F> {
     }
 }
 
-impl<'a, F:Field> Iterator for VecIter<'a,true, F> {
+impl<'a, F:Real> Iterator for VecIter<'a,true, F> {
     type Item = Vector<F>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -224,7 +224,7 @@ impl<'a, F:Field> Iterator for VecIter<'a,true, F> {
     }
 }
 
-impl<F: Field> Add<&Self> for Matrix<F> {
+impl<F: Real> Add<&Self> for Matrix<F> {
     type Output = Result<Self, ()>;
 
     fn add(mut self, rhs: &Self) -> Self::Output {
@@ -238,7 +238,7 @@ impl<F: Field> Add<&Self> for Matrix<F> {
     }
 }
 
-impl<F: Field> AddAssign<&Self> for Matrix<F> {
+impl<F: Real> AddAssign<&Self> for Matrix<F> {
     fn add_assign(&mut self, rhs: &Self) {
         debug_assert_eq!(self.dim(), rhs.dim());
 
@@ -248,7 +248,7 @@ impl<F: Field> AddAssign<&Self> for Matrix<F> {
     }
 }
 
-impl<F: Field> Neg for Matrix<F> {
+impl<F: Real> Neg for Matrix<F> {
     type Output = Self;
 
     fn neg(mut self) -> Self::Output {
@@ -259,7 +259,7 @@ impl<F: Field> Neg for Matrix<F> {
     }
 }
 
-impl<F: Field> Sub<&Self> for Matrix<F> {
+impl<F: Real> Sub<&Self> for Matrix<F> {
     type Output = Result<Self,()>;
 
     fn sub(mut self, rhs: &Self) -> Self::Output {
@@ -273,7 +273,7 @@ impl<F: Field> Sub<&Self> for Matrix<F> {
     }
 }
 
-impl<F: Field> SubAssign<&Self> for Matrix<F> {
+impl<F: Real> SubAssign<&Self> for Matrix<F> {
     fn sub_assign(&mut self, rhs: &Self) {
         debug_assert_eq!(self.dim(), rhs.dim());
 
@@ -284,7 +284,7 @@ impl<F: Field> SubAssign<&Self> for Matrix<F> {
 }
 
 //Scalar Multiplication
-impl<F: Field> Mul<Complex<F>> for Matrix<F> {
+impl<F: Real> Mul<Complex<F>> for Matrix<F> {
     type Output = Self;
     fn mul(mut self, rhs: Complex<F>) -> Self::Output {
         for entry in self.data.iter_mut() {
@@ -294,7 +294,7 @@ impl<F: Field> Mul<Complex<F>> for Matrix<F> {
     }
 }
 
-impl<F: Field> MulAssign<Complex<F>> for Matrix<F> {
+impl<F: Real> MulAssign<Complex<F>> for Matrix<F> {
     fn mul_assign(&mut self, rhs: Complex<F>) {
         for entry in self.data.iter_mut() {
             entry.mul_assign(rhs);
@@ -303,7 +303,7 @@ impl<F: Field> MulAssign<Complex<F>> for Matrix<F> {
 }
 
 //Action on Vectors
-impl<F: Field> Mul<&Vector<F>> for &Matrix<F>  {
+impl<F: Real> Mul<&Vector<F>> for &Matrix<F>  {
     type Output = Result<Vector<F>,()>;
 
     fn mul(self, rhs: &Vector<F>) -> Self::Output {
@@ -318,7 +318,7 @@ impl<F: Field> Mul<&Vector<F>> for &Matrix<F>  {
 }
 
 //Matrix Multiplication
-impl<F: Field> Mul<Self> for &Matrix<F> {
+impl<F: Real> Mul<Self> for &Matrix<F> {
     type Output = Result<Matrix<F>, ()>;
 
     fn mul(self, rhs: Self) -> Self::Output {

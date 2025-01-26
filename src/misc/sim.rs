@@ -3,10 +3,10 @@ use std::array;
 use crate::complex::*;
 use crate::static_::{
     matrix::*,
-    vector::*
+    state::*
 };
 
-fn dynamic_system<const N: usize, F: Field>(initial: &Vector<N, F>, dynamics: &Matrix<N,N,F>, time_steps: usize) -> Vector<N,F> {
+fn dynamic_system<const N: usize, F: Real>(initial: &State<N, F>, dynamics: &Matrix<N,N,F>, time_steps: usize) -> State<N,F> {
     //Test valid dynamics matrix
     let mut res: Matrix<N,N, F> = Matrix::eye();
     let mut mult = dynamics.clone();
@@ -22,7 +22,7 @@ fn dynamic_system<const N: usize, F: Field>(initial: &Vector<N, F>, dynamics: &M
     &res * initial
 }
 
-fn deterministic<const N: usize>(initial: &Vector<N, f32>, dynamics: &Matrix<N,N,f32>, time_steps: usize) -> Result<Vector<N,f32>,  &'static str>{
+fn deterministic<const N: usize>(initial: &State<N, f32>, dynamics: &Matrix<N,N,f32>, time_steps: usize) -> Result<State<N,f32>,  &'static str>{
     for c in 0..N {
         let mut outgoing = 0.0;
         for r in 0..N {
@@ -40,7 +40,7 @@ fn deterministic<const N: usize>(initial: &Vector<N, f32>, dynamics: &Matrix<N,N
     Ok(dynamic_system(initial, dynamics, time_steps))
 }
 
-fn probabilistic<const N: usize>(initial: &Vector<N, f32>, dynamics: &Matrix<N,N,f32>, time_steps: usize) -> Result<Vector<N,f32>,  &'static str> {
+fn probabilistic<const N: usize>(initial: &State<N, f32>, dynamics: &Matrix<N,N,f32>, time_steps: usize) -> Result<State<N,f32>,  &'static str> {
     for c in 0..N {
         let mut outgoing = 0.0;
         for r in 0..N {
@@ -58,9 +58,9 @@ fn probabilistic<const N: usize>(initial: &Vector<N, f32>, dynamics: &Matrix<N,N
     Ok(dynamic_system(initial, dynamics, time_steps))
 }
 
-fn multislit<const SLITS: usize, const TARGETS: usize>(probabilties: &[(usize, usize, f32)]) -> Vector<{SLITS + TARGETS + 1}, f32>
+fn multislit<const SLITS: usize, const TARGETS: usize>(probabilties: &[(usize, usize, f32)]) -> State<{SLITS + TARGETS + 1}, f32>
 where [(); SLITS + TARGETS + 1]: {
-    let initial = Vector::<{SLITS + TARGETS + 1}, f32>::new(array::from_fn(|i| Complex::new((i == 0) as u8 as f32, 0.0)));
+    let initial = State::<{SLITS + TARGETS + 1}, f32>::new(array::from_fn(|i| Complex::new((i == 0) as u8 as f32, 0.0)));
 
     let mut dynamics_data = [[Complex::<f32>::default(); {SLITS + TARGETS + 1}]; {SLITS + TARGETS + 1}];
 
@@ -91,7 +91,7 @@ mod tests {
 
     use crate::static_::{
         matrix::*,
-        vector::*
+        state::*
     };
     use crate::complex::*;
     use super::*;
@@ -133,7 +133,7 @@ mod tests {
         let res = multislit::<2,5>(&[(0,0,third), (0,1,third), (0,2,third),
                                      (1,2,third), (1,3,third), (1,4,third)]);
 
-        let expected = Vector::new([Complex::new(0.0, 0.0), Complex::new(0.0,0.0), Complex::new(0.0, 0.0), Complex::new(1.0 / 6.0, 0.0), Complex::new(1.0 / 6.0, 0.0), Complex::new(1.0 / 3.0, 0.0), Complex::new(1.0 / 6.0, 0.0), Complex::new(1.0 / 6.0, 0.0)]);
+        let expected = State::new([Complex::new(0.0, 0.0), Complex::new(0.0,0.0), Complex::new(0.0, 0.0), Complex::new(1.0 / 6.0, 0.0), Complex::new(1.0 / 6.0, 0.0), Complex::new(1.0 / 3.0, 0.0), Complex::new(1.0 / 6.0, 0.0), Complex::new(1.0 / 6.0, 0.0)]);
         assert!(res.fuzzy_equals(&expected));
     }
 
