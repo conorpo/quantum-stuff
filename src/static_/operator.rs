@@ -93,24 +93,41 @@ impl<const N: usize, F: Complex> Operator<N,F> {
         let adj = self.as_adjoint();
         let a = &adj * self;
         let b = self * &adj;
+        let id = Self::eye();
         
-        a.fuzzy_equals(&Self::IDENTITY) && b.fuzzy_equals(&Self::IDENTITY)
+        a.fuzzy_equals(&id) && b.fuzzy_equals(&id)
     }
 
     pub fn tensor_product<const N2: usize>(&self, rhs: &Operator<N2, F>) -> Operator<{N * N2}, F> {
-        let mut new_operator = Operator::<{N * N2}, F>::ZERO;
+        let mut data = [[F::ZERO; N * N2];N*N2];
 
         for i in 0..N {
             for j in 0..N {
                 for i2 in 0..N2 {
                     for j2 in 0..N2 {
-                        new_operator.data[i * N2 + i2][j * N2 + j2] = self.data[i][j] * rhs.data[i2][j2]
+                        data[i * N2 + i2][j * N2 + j2] = self.data[i][j] * rhs.data[i2][j2]
                     }
                 }
             }
         }
 
         new_operator
+    }
+
+    pub fn expected_value(&self, state: &State<N,F>) -> Result<F::RealType, &'static str> {
+        if !self.is_hermitian() { return Err("Observables need to be Hermitian matrices.")}
+        let after = self * state;
+        Ok(state.dot(&after).get_r())
+    }
+
+    pub fn variance(&self, state: &State<N,F>) -> Result<F::RealType, &'static str> {
+        let expected = self.expected_value(state)?;
+
+        let demeaned = -(Self::eye() * F::real(expected)) + self;
+        let demeaned_squared = &demeaned * &demeaned;
+        
+        Ok(demeaned_squared.expected_value(state)?)
+
     }
 
     // Might just implement this myself
@@ -216,7 +233,7 @@ impl<const N: usize, F: Complex> Mul<&State<N,F>> for &Operator<N,F> {
 impl<const N: usize, F: Complex> Mul<Self> for &Operator<N,F> {
     type Output = Operator<N,F>;
 
-    fn mul(self, rhs: &Self) -> Self::Output {
+    fn mul(self, rhs: Self) -> Self::Output {
         let mut data = [[F::ZERO;N];N];
 
         for i in 0..N {
@@ -233,50 +250,112 @@ impl<const N: usize, F: Complex> Mul<Self> for &Operator<N,F> {
     }
 }
 
-static NOT : Operator<2, C64> = Operator::new([[C64::ZERO, C64::ONE],
-                                           [C64::ONE, C64::ZERO]]);
-
-impl Operator<2, C64> {
-    const NOT: &'static Self = &NOT;
-}
-
-impl Operator<2, C32> {
-    const H : Self = {
-        const ENTRY: f32 = 1.0 / std::f32::consts::SQRT_2;
-        Self::new([[C32::new(ENTRY, 0.0), C32::new(ENTRY, 0.0)],
-                        [C32::new(ENTRY, 0.0), C32::new(-ENTRY, 0.0)]])
+//MARK: Macros
+macro_rules! op64 {
+    [$([$($r: expr $(, $i: expr)?);*]),*] => {
+        Operator::new([$([
+            $(c64!($r $(, $i)?)),*
+        ]),*])
     };
 }
 
-impl Operator<2, C64> {
-    const H : Self = {
-        const ENTRY: f64 = 1.0 / std::f64::consts::SQRT_2;
-        Self::new([[C64::new(ENTRY, 0.0), C64::new(ENTRY, 0.0)],
-                        [C64::new(ENTRY, 0.0), C64::new(-ENTRY, 0.0)]])
+macro_rules! op32 {
+    [$([$($r: expr $(, $i: expr)?);*]),*] => {
+        Operator::new([$([
+            $(c32!($r $(, $i)?)),*
+        ]),*])
     };
 }
 
-impl<F: Complex> Operator<4, F> {
-    const CNOT: Self = Self::new([[F::ONE, F::ZERO, F::ZERO, F::ZERO],
-                                 [F::ZERO, F::ONE, F::ZERO, F::ZERO],
-                                 [F::ZERO, F::ZERO, F::ZERO, F::ONE],
-                                 [F::ZERO, F::ZERO, F::ONE, F::ZERO]]);
+
+
+
+// MARK: GATES
+//Yes these double static defenitions are kind of ugly
+static NOT64: Operator<2, C64> = op64![[0;1],[1;0]];
+static NOT32: Operator<2, C32> = op32![[0;1],[1;0]];
+
+impl Operator<2,C64> {
+    const NOT: &'static Self = &NOT64;
+}
+
+impl Operator<2,C32> {
+    const NOT: &'static Self = &NOT32;
+}
+
+static H64: Operator<2, C64> = {
+    const entry: f64 = 1.0 / std::f64::consts::SQRT_2;
+    op64![[entry,0; entry,0],
+          [entry,0; -entry,0]]
+};
+
+
+static H32: Operator<2, C32> = {
+    const entry: f32 = 1.0 / std::f32::consts::SQRT_2;
+    op32![[entry,0; entry,0],
+          [entry,0; -entry,0]]
+};
+
+impl Operator<2, C32> {
+    const H: &'static Self = &H32;
+}
+
+impl Operator<2, C64> {
+    const H: &'static Self = &H64;
+}
+
+static CNOT32: Operator<4,C32> = op32![[1;0;0;0],
+                                       [0;1;0;0],
+                                       [0;0;0;1],
+                                       [0;0;1;0]];
+
+static CNOT64: Operator<4,C64> = op64![[1;0;0;0],
+                                       [0;1;0;0],
+                                       [0;0;0;1],
+                                       [0;0;1;0]];
+
+impl Operator<4, C32> {
+    const CNOT: &'static Self = &CNOT32;
+}
+
+impl Operator<4, C64> {
+    const CNOT: &'static Self = &CNOT64;
 }
 
 impl Operator<2, C32> {
-    const PHASE_SHIFT: fn(f32) -> Self = |theta| {
-        let mut mat = Self::new([[C32::ONE, C32::ZERO],
-                                 [C32::ZERO, C32::ZERO]]);
+    fn phase_shift(theta: f32) -> Self {
+        let mut mat = op32![[1;0],[0;1]];
         mat.data[1][1] = C32::new(theta.exp(), 0.0);
         mat
-    };
+    }
 }
 
 impl Operator<2, C64> {
-    const PHASE_SHIFT: fn(f64) -> Self = |theta| {
-        let mut mat = Self::new([[C64::ONE, C64::ZERO],
-                                 [C64::ZERO, C64::ZERO]]);
+    fn phase_shift(theta: f64) -> Self {
+        let mut mat = op64![[1;0],[0;1]];
         mat.data[1][1] = C64::new(theta.exp(), 0.0);
         mat
-    };
+    }
 }
+
+
+/*
+Observable Variance, Expected Value test
+
+    fn ex_4_2_5() {
+        let c: f64 = 2.0.sqrt() / 2.0;
+        let state = State::new([Complex::new(c,0.0), Complex::new(0.0,c)]);
+        let observable = mat64![[1, 0 - 1 i],
+                                [0 + 1 i , 2]];
+        
+        let expectation = expected_value(&observable, &state).unwrap();
+        println!("{expectation}");
+        assert!((expectation - 2.5).abs() < f64::EPSILON * 100.0);
+
+        let var = variance(&observable, &state).unwrap();
+        println!("{var}");
+        assert!((var - 0.25).abs() < f64::EPSILON);
+
+    }
+*/
+

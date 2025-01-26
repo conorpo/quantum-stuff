@@ -144,14 +144,10 @@ impl<const N: usize, F: Complex> Mul<F> for State<N,F> {
 
 #[macro_export]
 macro_rules! state64 {
-    [$($r:literal $(+)? $($i:literal i)?),* ] => {
+    [$($r:expr $(,$i:expr)?);* ] => {
         State::new(
             [$({
-                let mut i = 0.0;
-                $(
-                    i = $i as f64;
-                )?
-                C64::new($r as f64, i)
+                c64!($r $(, $i)?)
             }),*]
         )
     };
@@ -159,14 +155,10 @@ macro_rules! state64 {
 
 #[macro_export]
 macro_rules! state32 {
-    [$($r:literal $(+)? $($i:literal i)?),* ] => {
+    [$($c: tt);* ] => {
         State::new(
             [$({
-                let mut i = 0.0;
-                $(
-                    i = $i as f32;
-                )?
-                C32::new($r as f32, i)
+                c32!($c)
             }),*]
         )
     };
@@ -199,15 +191,15 @@ mod tests {
 
     #[test]
     fn test_inner_product() {
-        let a = state64![1.0 - 1.0 i, 3.0];
+        let a = state64![1,-1 ; 3.0];
         assert!(a.dot(&a).r > 0.0);
 
-        let b = state64![0.0, 0.0];
+        let b = state64![0.0; 0.0];
         assert_eq!(b.dot(&b), C64::ZERO);
 
-        let mut a = state64![1.0 + 2.0 i, -2.0 - 3.0 i];
-        let mut b = state64![1.0 - 2.0 i, 2.0 + 3.0 i];
-        let c = state64![2.0 + 3.0 i, 3.0 - 2.0 i];
+        let mut a = state64![1,2 ; -2, -3];
+        let mut b = state64![1, -2; 2, 3];
+        let c = state64![2, 3; 3, -2];
 
         assert!(a.dot(&b) == b.dot(&a).conjugate());
         let b_c = b.clone() + &c;
@@ -224,14 +216,14 @@ mod tests {
 
     #[test]
     fn test_norm_and_distance() {
-        let a = state64![3, -6, 2];
+        let a = state64![3; -6; 2];
         assert_eq!(a.norm(), 7.0);
-        let c = c64!(2.0 + 1 i);
+        let c = c64!(2.0, 1);
         let a = a * c;
         assert_eq!(a.norm(), 7.0 * c.modulus()); //Respects Scalar Multiplication
 
-        let a = state64![3,1,2];
-        let b = state64![2,2,-1];
+        let a = state64![3;1;2];
+        let b = state64![2;2;-1];
         assert_eq!(a.distance(&b), 11.0.sqrt()); 
         assert_eq!(a.distance(&a), 0.0);
         assert_eq!(a.distance(&b), b.distance(&a)); //Symmetric
@@ -239,14 +231,14 @@ mod tests {
 
     #[test]
     fn test_tensor_product() {
-        let a = state64![2,3];
-        let b = state64![4,6,3];
+        let a = state64![2;3];
+        let b = state64![4;6;3];
 
-        let ab = state64![8,12,6,12,18,9];
+        let ab = state64![8;12;6;12;18;9];
 
         assert!(a.tensor_product(&b).fuzzy_equals(&ab));
 
-        let c =  c64!(2 + -3.5 i);
+        let c =  c64!(2,-3.5);
         let a = a * c;
         assert!(a.tensor_product(&b).fuzzy_equals(&(ab * c)));
 

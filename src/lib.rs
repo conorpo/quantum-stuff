@@ -1,6 +1,7 @@
 #![feature(isqrt)]
 #![feature(generic_const_exprs)]
 #![feature(inherent_associated_types)]
+#![feature(concat_idents)]
 #![feature(if_let_guard)]
 #![allow(unused_mut)]
 #![allow(unused_assignments)]
@@ -11,9 +12,9 @@ pub mod complex;
 
 #[macro_use]
 pub mod static_;
-#[macro_use]
-pub mod dynamic;
+// #[macro_use]
+// pub mod dynamic;
 
 
 pub mod misc;
-pub mod emulator;
+// pub mod emulator;

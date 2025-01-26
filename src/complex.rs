@@ -51,6 +51,7 @@ where Self: Sized
     type RealType: Real + PartialEq + Debug;
     const ZERO: Self;
     const ONE: Self; 
+    const I: Self;
 
     fn get_r(&self) -> Self::RealType; 
     fn get_i(&self) -> Self::RealType;
@@ -58,6 +59,7 @@ where Self: Sized
     fn conjugate(self) -> Self;
     fn fuzzy_equals(self, rhs: Self) -> bool;
     fn pow(self, exp: u32) -> Self;
+    fn real(r: Self::RealType) -> Self;
 }
 
 impl C32 {
@@ -82,6 +84,7 @@ impl Complex for C32 {
     type RealType = f32;
     const ZERO: Self = C32 { r: 0.0, i: 0.0};
     const ONE: Self = C32 { r: 1.0, i: 0.0};
+    const I: Self = C32 { r: 0.0, i:-1.0};
 
     fn get_r(&self) -> Self::RealType {
         self.r
@@ -122,12 +125,20 @@ impl Complex for C32 {
         (self.get_r() - rhs.get_r()).abs() < Self::RealType::EPSILON &&
         (self.get_i() - rhs.get_i()).abs() < Self::RealType::EPSILON
     }
+
+    fn real(r: Self::RealType) -> Self {
+        Self {
+            r,
+            i: 0.0
+        }
+    }
 }
 
 impl Complex for C64 {
     type RealType = f64;
     const ZERO: Self = C64 { r: 0.0, i: 0.0};
     const ONE: Self = C64 { r: 1.0, i: 0.0};
+    const I: Self = C64 { r: 0.0, i:-1.0};
 
     fn get_r(&self) -> Self::RealType {
         self.r
@@ -135,6 +146,13 @@ impl Complex for C64 {
 
     fn get_i(&self) -> Self::RealType {
         self.i
+    }
+
+    fn real(r: Self::RealType) -> Self {
+        Self {
+            r,
+            i: 0.0
+        }
     }
 
 
@@ -171,6 +189,45 @@ impl Complex for C64 {
     }
 }
 
+impl From<f64> for C64 {
+    fn from(val: f64) -> Self {
+        Self {
+            r: val,
+            i: 0.0
+        }
+    }
+}
+
+impl From<i32> for C64 {
+    fn from(value: i32) -> Self {
+        Self {
+            r: value as f64,
+            i: 0.0
+        }
+    }
+}
+
+
+impl From<f32> for C32 {
+    fn from(val: f32) -> Self {
+        Self {
+            r: val,
+            i: 0.0
+        }
+    }
+}
+
+impl From<i16> for C32 {
+    fn from(value: i16) -> Self {
+        Self {
+            r: value as f32,
+            i: 0.0
+        }
+    }
+}
+
+
+
 // impl From<Complex<F>> for ComplexP<F> {
 //     fn from(value: Complex<F>) -> Self {
 //         Self {
@@ -192,7 +249,7 @@ impl Complex for C64 {
 
 #[macro_export]
 macro_rules! c32 {
-    ($r: literal $(+)? $($i: literal i)?) => {
+    ($r: expr $(, $i: expr)?) => {
         {
             let mut r = $r as f32;
             let mut i = 0.0;
@@ -207,7 +264,7 @@ macro_rules! c32 {
 
 #[macro_export]
 macro_rules! c64 {
-    ($r: literal $(+)? $($i: literal i)?) => {
+    ($r: expr $(, $i: expr)?) => {
         {
             let r = $r as f64;
             let i = 0.0;
