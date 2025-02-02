@@ -45,7 +45,7 @@ pub struct C64 {
     pub i: f64,
 }
 
-pub trait Complex: Add<Output = Self> + AddAssign + Sub<Output = Self> + SubAssign + Neg<Output = Self> + Mul<Output = Self> + MulAssign + Div<Output = Self> + DivAssign + Copy + Clone + PartialEq
+pub trait Complex: Add<Output = Self> + AddAssign + Sub<Output = Self> + SubAssign + Neg<Output = Self> + Mul<Output = Self> + MulAssign + Div<Output = Self> + DivAssign + Copy + Clone + PartialEq + Debug
 where Self: Sized
 {
     type RealType: Real + PartialEq + Debug;

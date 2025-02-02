@@ -36,18 +36,9 @@ impl<const N: usize, F: Complex> Operator<N,F> {
         }
     }
 
-    // pub const IDENTITY: &'static Self = &{
-    //     let mut data = [[F::ZERO;N];N];
-    //     let mut i = 0;
-    //     while i < N {
-    //         data[i][i] = F::ONE;
-    //         i += 1;
-    //     }
-        
-    //     Self {
-    //         data
-    //     }
-    // };
+    pub fn get(&self, r: usize, c: usize) -> Option<&F> {
+        self.data.get(r).and_then(|row| row.get(c))
+    }
 
     pub fn as_transpose(&self) -> Self {
         let mut data: [[F;N];N] = array::from_fn(|i| {
@@ -89,15 +80,6 @@ impl<const N: usize, F: Complex> Operator<N,F> {
         self.data.iter().flatten().zip(rhs.data.iter().flatten()).all(|(a,b)| a.fuzzy_equals(*b))
     }
 
-    pub fn is_unitary(&self) -> bool {
-        let adj = self.as_adjoint();
-        let a = &adj * self;
-        let b = self * &adj;
-        let id = Self::eye();
-        
-        a.fuzzy_equals(&id) && b.fuzzy_equals(&id)
-    }
-
     pub fn tensor_product<const N2: usize>(&self, rhs: &Operator<N2, F>) -> Operator<{N * N2}, F> {
         let mut data = [[F::ZERO; N * N2];N*N2];
 
@@ -111,7 +93,9 @@ impl<const N: usize, F: Complex> Operator<N,F> {
             }
         }
 
-        new_operator
+        Operator::<{N * N2}, F> {
+            data
+        }
     }
 
     pub fn expected_value(&self, state: &State<N,F>) -> Result<F::RealType, &'static str> {
@@ -137,6 +121,27 @@ impl<const N: usize, F: Complex> Operator<N,F> {
     //     let stack_req = compute_hermitian_evd_req(N, ComputeVectors::Yes, Parallelism::None, SymmetricEvdParams::default());
     // }
 }
+
+impl<const N:usize> Operator<N, C64> {
+    pub fn is_unitary(&self) -> bool {
+        let adj = self.as_adjoint();
+        let a = &adj * self;
+        let b = self * &adj;
+        
+        a.fuzzy_equals(Self::IDENTITY) && b.fuzzy_equals(Self::IDENTITY)
+    }
+}
+
+impl<const N:usize> Operator<N, C32> {
+    pub fn is_unitary(&self) -> bool {
+        let adj = self.as_adjoint();
+        let a = &adj * self;
+        let b = self * &adj;
+        
+        a.fuzzy_equals(Self::IDENTITY) && b.fuzzy_equals(Self::IDENTITY)
+    }
+}
+
 
 impl<const N: usize, F: Complex> Add<&Self> for Operator<N,F> {
     type Output = Self;
@@ -271,59 +276,83 @@ macro_rules! op32 {
 
 
 // MARK: GATES
-//Yes these double static defenitions are kind of ugly
-static NOT64: Operator<2, C64> = op64![[0;1],[1;0]];
-static NOT32: Operator<2, C32> = op32![[0;1],[1;0]];
+//Yes these double static defenitions are kind of uglyW
+
+impl<const N: usize> Operator<N, C64> {
+    pub const IDENTITY: &'static Self = &{
+        let mut data = [[C64::ZERO;N];N];
+        let mut i = 0;
+        while i < N {
+            data[i][i] = C64::ONE;
+            i += 1;
+        }
+        
+        Self {
+            data
+        }
+    };
+}
+
+impl<const N: usize> Operator<N, C32> {
+    pub const IDENTITY: &'static Self = &{
+        let mut data = [[C32::ZERO;N];N];
+        let mut i = 0;
+        while i < N {
+            data[i][i] = C32::ONE;
+            i += 1;
+        }
+        
+        Self {
+            data
+        }
+    };
+}
 
 impl Operator<2,C64> {
-    const NOT: &'static Self = &NOT64;
+    pub const NOT: &'static Self = &{
+        op64![[0;1],[1;0]]
+    };
+
+    pub const H: &'static Self = &{
+        const entry: f64 = 1.0 / std::f64::consts::SQRT_2;
+        op64![[entry,0; entry,0],
+                [entry,0; -entry,0]]
+    };
 }
 
 impl Operator<2,C32> {
-    const NOT: &'static Self = &NOT32;
+    pub const NOT: &'static Self = &{
+        op32![[0;1],[1;0]]
+    };
+
+    pub const H: &'static Self = &{
+        const entry: f32 = 1.0 / std::f32::consts::SQRT_2;
+        op32![[entry,0; entry,0],
+                [entry,0; -entry,0]]
+    };
 }
 
-static H64: Operator<2, C64> = {
-    const entry: f64 = 1.0 / std::f64::consts::SQRT_2;
-    op64![[entry,0; entry,0],
-          [entry,0; -entry,0]]
-};
-
-
-static H32: Operator<2, C32> = {
-    const entry: f32 = 1.0 / std::f32::consts::SQRT_2;
-    op32![[entry,0; entry,0],
-          [entry,0; -entry,0]]
-};
-
-impl Operator<2, C32> {
-    const H: &'static Self = &H32;
-}
-
-impl Operator<2, C64> {
-    const H: &'static Self = &H64;
-}
-
-static CNOT32: Operator<4,C32> = op32![[1;0;0;0],
-                                       [0;1;0;0],
-                                       [0;0;0;1],
-                                       [0;0;1;0]];
-
-static CNOT64: Operator<4,C64> = op64![[1;0;0;0],
-                                       [0;1;0;0],
-                                       [0;0;0;1],
-                                       [0;0;1;0]];
 
 impl Operator<4, C32> {
-    const CNOT: &'static Self = &CNOT32;
+    pub const CNOT: &'static Self = &{
+        op32![[1;0;0;0],
+              [0;1;0;0],
+              [0;0;0;1],
+              [0;0;1;0]]
+    };
 }
 
 impl Operator<4, C64> {
-    const CNOT: &'static Self = &CNOT64;
+    pub const CNOT: &'static Self = &{
+        op64![[1;0;0;0],
+              [0;1;0;0],
+              [0;0;0;1],
+              [0;0;1;0]]
+    };
 }
 
 impl Operator<2, C32> {
-    fn phase_shift(theta: f32) -> Self {
+    pub fn phase_shift(theta: f32) -> Self {
         let mut mat = op32![[1;0],[0;1]];
         mat.data[1][1] = C32::new(theta.exp(), 0.0);
         mat
@@ -331,13 +360,18 @@ impl Operator<2, C32> {
 }
 
 impl Operator<2, C64> {
-    fn phase_shift(theta: f64) -> Self {
+    pub fn phase_shift(theta: f64) -> Self {
         let mut mat = op64![[1;0],[0;1]];
         mat.data[1][1] = C64::new(theta.exp(), 0.0);
         mat
     }
 }
 
+// #[cfg(test)]
+// mod tests {
+//     #[test]
+//     fn 
+// }
 
 /*
 Observable Variance, Expected Value test

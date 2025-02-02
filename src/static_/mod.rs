@@ -1,7 +1,11 @@
 #[macro_use]
-pub mod state;
+mod state;
 
 #[macro_use]
-pub mod operator;
+mod operator;
 
-pub mod register;
+mod register;
+
+pub use operator::Operator;
+pub use register::Register;
+pub use state::State;

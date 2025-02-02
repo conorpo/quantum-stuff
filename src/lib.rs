@@ -12,9 +12,10 @@ pub mod complex;
 
 #[macro_use]
 pub mod static_;
-// #[macro_use]
-// pub mod dynamic;
+
+#[macro_use]
+pub mod dynamic;
 
 
-pub mod misc;
+// pub mod misc;
 // pub mod emulator;

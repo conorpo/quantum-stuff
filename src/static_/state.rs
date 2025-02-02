@@ -1,3 +1,4 @@
+use std::random::random;
 use std::array;
 
 #[macro_use]
@@ -24,6 +25,13 @@ impl<const N: usize, F: Complex> State<N, F> {
             data: components
         }
     }
+
+    // //LSB willbe first qubit in state
+    // pub fn from_bits<const NUM_BITS: usize>(initial_state: [u8; NUM_BITS]) -> Self
+    // where [(); (2usize.pow(NUM_BITS as u32) == N) as usize - 1]: {
+    //     let state = State::zero();
+    //     state
+    // }
 
     pub fn iter(&self) -> Iter<'_, F> {
         self.data.iter()
@@ -70,6 +78,31 @@ impl<const N: usize, F: Complex> State<N, F> {
             res[i] = (*entry * entry.conjugate()).get_r();
         }
         res
+    }
+}
+
+impl<const N: usize> State<N, C64> {
+    pub fn measure(&self) -> usize {
+        let rand: u32 = random();
+        let sample = (rand as f64) / (u32::MAX as f64);
+        let mut sum = 0.0;
+        for (i, prob) in self.probabilities().iter().enumerate() {
+            sum += prob;
+            if sum > sample {
+                return i;
+            }
+        }
+        panic!("How did we get here.");
+    }
+}
+
+impl<F: Complex> State<2, F> {
+    pub fn qubit_zero() -> Self {
+        Self::new([F::ONE, F::ZERO])
+    }
+
+    pub fn qubit_one() -> Self {
+        Self::new([F::ZERO, F::ONE])
     }
 }
 
