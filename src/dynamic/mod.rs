@@ -5,6 +5,13 @@ TODO: Make get methods falible
 */
 
 #[macro_use]
-pub mod vector;
+mod vector;
 #[macro_use]
-pub mod matrix;
+mod matrix;
+
+mod state;
+mod operator;
+
+pub use state::*;
+pub use operator::*;
+pub use matrix::*;

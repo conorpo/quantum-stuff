@@ -1,34 +1,40 @@
-use quantum_stuff::static_::*;
+use quantum_stuff::dynamic::*;
 use quantum_stuff::complex::*;
 
 pub fn main() {
-    // 01
-    // let state: State<4, C64> = State::new([C64::ZERO, C64::ONE, C64::ZERO, C64::ZERO]);
+    let mut input = State::qubit(false);
+    let mut output = State::qubit(true);
+    // 0
     
-    // let H_H = Operator::<2,C64>::H.tensor_product(Operator::<2,C64>::H);
+    let H = Operator::hadamard();
+    input.apply(&H);
+    output.apply(&H);
 
-    // let state = &H_H * &state;
+    //1
+
+    let mut state = input.tensor_product(output);    
     
     // //Change this
-    // let my_func = [0,1];
-    // let mut u = Operator::<4,C64>::zero();
-    // u.data[my_func[0] ^ 0][0] = C64::ONE;
-    // u.data[my_func[0] ^ 1][1] = C64::ONE;
-    // u.data[my_func[1] ^ 0][2] = C64::ONE;
-    // u.data[my_func[1] ^ 1][3] = C64::ONE;
+    let my_func = [0,1];
+    let mut u = Matrix::zeroes(4);
+    *u.get_mut(my_func[0] ^ 0, 0) = C64::ONE;
+    *u.get_mut(my_func[0] ^ 1,1) = C64::ONE;
+    *u.get_mut(my_func[1] ^ 0,2) = C64::ONE;
+    *u.get_mut(my_func[1] ^ 1,3) = C64::ONE;
+    let U = Operator::try_from(u).unwrap();
 
-    // let state = &u * &state;
+    state.apply(&U);
 
-    // let H_I = Operator::<2,C64>::H.tensor_product(Operator::<2,C64>::IDENTITY);
+    //2
 
-    // let state = &H_I * &state;
+    state.apply_partial(0..1, &H);
 
-    // let res = state.measure();
-    // if res < 2 {
-    //     println!("Constant!");
-    // } else {
-    //     println!("Balanced!");
-    // }
-
-
+    //3
+    
+    let res = state.measure_partial(0..1);
+    if res == 0 {
+        println!("Constant");
+    } else {
+        println!("Balaanced")
+    }
 }

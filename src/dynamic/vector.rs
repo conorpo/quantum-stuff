@@ -5,7 +5,7 @@ use std::slice::Iter;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Vector<F: Complex> {
-    data: Vec<F>,
+    pub data: Vec<F>,
 }
 
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, Sub, SubAssign};

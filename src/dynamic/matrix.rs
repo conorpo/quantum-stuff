@@ -12,7 +12,7 @@ use std::ops::{Add, AddAssign, Neg, Sub, SubAssign, Mul, MulAssign};
 #[derive(Clone, PartialEq, Debug)]
 pub struct Matrix<F: Complex> {
     dim: (usize, usize),
-    data: Vec<F>
+    pub data: Vec<F>
 }
 
 impl<F: Complex> Matrix<F> {
@@ -53,9 +53,21 @@ impl<F: Complex> Matrix<F> {
         }
     }
 
+    pub fn zeroes(n: usize) -> Self {
+        Self {
+            dim: (n,n),
+            data: vec![F::ZERO; n*n]
+        }
+    }
+
     pub fn get(&self, r: usize, c: usize) -> F {
         self.data[r * self.dim.1 + c]
     }
+
+    pub fn get_mut(&mut self, r: usize, c: usize) -> &mut F {
+        &mut self.data[r * self.dim.1 + c]
+    }
+
 
     pub fn transpose(&self) -> Self {
         let (m,n) = self.dim;
@@ -107,23 +119,21 @@ impl<F: Complex> Matrix<F> {
     pub fn fuzzy_equals(&self, rhs: &Self) -> bool {
         self.dim() == rhs.dim() && self.data.iter().zip(rhs.data.iter()).all(|(a,b)| a.fuzzy_equals(*b))
     }
+    pub fn is_identity(&self) -> bool {
+        if !self.is_square() { return false; }
 
-    //TODO: Fix This
-    // pub fn is_identity(&self) -> bool {
-    //     if !self.is_square() { return false; }
-
-    //     let mut is_identity = true;
-    //     for r in 0..self.dim().0 {
-    //         for c in 0..self.dim().1 {
-    //             is_identity &= self.get(r,c).fuzzy_equals(if r == c {
-    //                 F::ONE
-    //             } else {
-    //                 F::ZERO
-    //             });
-    //         }
-    //     }
-    //     is_identity
-    // }
+        let mut is_identity = true;
+        for r in 0..self.dim().0 {
+            for c in 0..self.dim().1 {
+                is_identity &= self.get(r,c).fuzzy_equals(if r == c {
+                    F::ONE
+                } else {
+                    F::ZERO
+                });
+            }
+        }
+        is_identity
+    }
 
     pub fn row_iter(&self) -> VecIter<'_, false, F> {
         VecIter::<'_, false, F> {

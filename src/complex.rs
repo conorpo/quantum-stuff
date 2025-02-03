@@ -60,6 +60,9 @@ where Self: Sized
     fn fuzzy_equals(self, rhs: Self) -> bool;
     fn pow(self, exp: u32) -> Self;
     fn real(r: Self::RealType) -> Self;
+    fn exp(self) -> Self;
+    fn modulus_squared(self) -> Self::RealType;
+    
 }
 
 impl C32 {
@@ -94,15 +97,25 @@ impl Complex for C32 {
         self.i
     }
 
+    fn exp(self) -> Self {
+        let Self {r, i} = self;
+        let (s,c) = i.sin_cos();
+        Self::new(r.exp() + c, s)
+    }
+
     fn conjugate(self) -> Self {
         Self {
             i: -self.i,
             ..self
         }
     }
-    
+
     fn modulus(self) -> Self::RealType {
         (self.r * self.r + self.i * self.i).sqrt()
+    }
+
+    fn modulus_squared(self) -> Self::RealType {
+        (self.r * self.r + self.i * self.i)
     }
 
     fn pow(self, mut exp: u32) -> Self {
@@ -148,6 +161,12 @@ impl Complex for C64 {
         self.i
     }
 
+    fn exp(self) -> Self {
+        let Self {r, i} = self;
+        let (s,c) = i.sin_cos();
+        Self::new(r.exp() + c, s)
+    }
+
     fn real(r: Self::RealType) -> Self {
         Self {
             r,
@@ -161,6 +180,10 @@ impl Complex for C64 {
             i: -self.i,
             ..self
         }
+    }
+    
+    fn modulus_squared(self) -> Self::RealType {
+        (self.r * self.r + self.i * self.i)
     }
 
     fn modulus(self) -> Self::RealType {
