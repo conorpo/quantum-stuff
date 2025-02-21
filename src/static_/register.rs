@@ -1,7 +1,6 @@
 use super::state::*;
 use super::operator::*;
 use crate::complex::*;
-use core::num;
 use std::rc::Rc;
 use std::cell::Cell;
 

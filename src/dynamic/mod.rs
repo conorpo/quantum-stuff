@@ -10,8 +10,9 @@ mod vector;
 mod matrix;
 
 mod state;
-mod operator;
+mod gate;
 
 pub use state::*;
-pub use operator::*;
+pub use gate::*;
 pub use matrix::*;
+pub use vector::*;

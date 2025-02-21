@@ -1,6 +1,6 @@
-#[macro_use]
 use crate::complex::*;
 use std::slice::Iter;
+use std::fmt::{Display, Write};
 
 
 #[derive(Clone, PartialEq, Debug)]
@@ -8,7 +8,7 @@ pub struct Vector<F: Complex> {
     pub data: Vec<F>,
 }
 
-use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 // MARK: Vector
 impl<F: Complex> Vector<F> {
@@ -52,13 +52,13 @@ impl<F: Complex> Vector<F> {
     }
 
     pub fn norm(&self) -> F::RealType {
-        let self_dot_self = self.dot(&self).unwrap();
+        let self_dot_self = self.dot(self).unwrap();
         //debug_assert_eq!(self_dot_self.get_i(), F::ZERO);
         self_dot_self.get_r().sqrt()
     }
 
     pub fn norm_squared(&self) -> F::RealType {
-        self.dot(&self).unwrap().get_r()
+        self.dot(self).unwrap().get_r()
     }
 
     //TODO: Check if need to clone
@@ -86,10 +86,21 @@ impl<F: Complex> Vector<F> {
     }
 }
 
+impl<F: Complex> Display for Vector<F> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_char('[')?;
+        for entry in self.iter() {
+            f.write_fmt(format_args!("{},",&entry))?;
+        }
+        f.write_char(']')?;
+        Ok(())
+    }
+}
+
 impl<F: Complex> From<&[F]> for Vector<F> {
     fn from(value: &[F]) -> Self {
         Self {
-            data: value.iter().copied().collect()
+            data: value.to_vec()
         }
     }
 }
@@ -192,7 +203,7 @@ macro_rules! dvec32 {
 }
 #[cfg(test)]
 mod tests {
-    use std::{array, vec};
+    
 
     use crate::complex::*;
     use super::*;

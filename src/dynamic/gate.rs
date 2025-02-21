@@ -3,15 +3,20 @@ use core::f64;
 use super::matrix::*;
 use crate::complex::*;
 
-pub struct Operator(Matrix<C64>);
+#[derive(Clone)]
+pub struct Gate(Matrix<C64>);
 
-impl Operator {
+impl Gate {
     pub fn get(&self) -> &Matrix<C64> {
         &self.0
     }
 
     pub fn dim(&self) -> usize {
         self.0.dim().0
+    }
+
+    pub fn tensor_product(&self, rhs: &Self) -> Self {
+        Self (self.0.tensor_product(&rhs.0))
     }
 
     pub fn identity(n: usize) -> Self {
@@ -59,7 +64,7 @@ impl Operator {
 
     pub fn controlled(og: Self) -> Self {
         let og_n = og.dim();
-        let mut mat = Matrix::zeroes(og_n * 2);
+        let mut mat = Matrix::zeroes(og_n * 2, og_n * 2);
         for i in 0..og_n {
             *mat.get_mut(i,i) = C64::ONE;
         }
@@ -72,19 +77,53 @@ impl Operator {
 
         Self(mat)
     }
+
+    pub fn create_oracle(input_bits: usize, output_bits: usize, f: impl Fn(usize) -> usize) -> Self {
+        let size = 1 << (input_bits + output_bits);
+        let mut mat: Matrix<C64> = Matrix::zeroes(size,size);
+        for x in 0..(1 << input_bits) {
+            let f_x = f(x);
+            for y in 0..(1 << output_bits) {
+                *mat.get_mut((x << output_bits) + (y ^ f_x), (x << output_bits) + y) = C64::ONE;
+            }
+        }
+        Self::try_from(mat).unwrap()
+    }
+
+    pub fn create_oracle_unchecked(input_bits: usize, output_bits: usize, f: impl Fn(usize) -> usize) -> Self {
+        let size = 1 << (input_bits + output_bits);
+        let mut mat: Matrix<C64> = Matrix::zeroes(size,size);
+        for x in 0..(1 << input_bits) {
+            let f_x = f(x);
+            for y in 0..(1 << output_bits) {
+                *mat.get_mut((x << output_bits) + (y ^ f_x), (x << output_bits) + y) = C64::ONE;
+            }
+        }
+        unsafe { Self::from_matrix_unchecked(mat) }
+    }
+
+    /// # Safety
+    /// Nothing unsafe about this, simply want to disuade usage.
+    pub unsafe fn from_matrix_unchecked(mat: Matrix<C64>) -> Self {
+        Self(mat)
+    }
 }
 
-impl TryFrom<Matrix<C64>> for Operator {
+impl TryFrom<Matrix<C64>> for Gate {
     type Error = ();
     fn try_from(value: Matrix<C64>) -> Result<Self, Self::Error> {
-        Ok(Operator(value))
+        if value.is_unitary() {
+            Ok(Gate(value))
+        } else {
+            Err(())
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::{complex::*};
-    use crate::dynamic::matrix::*;
+    
     use super::*;
 
     #[test]
@@ -92,6 +131,6 @@ mod tests {
         let theta = 4.0;
         let phase_shift = [[C64::ONE, C64::ZERO], [C64::ZERO, C64::new(0.0, theta).exp()]];
         let mat = Matrix::from(phase_shift);
-        let op: Operator = mat.try_into().unwrap();
+        let op: Gate = mat.try_into().unwrap();
     }
 }

@@ -1,7 +1,7 @@
 use crate::complex::*;
 use super::state::*;
 
-use std::{array, ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign}};
+use std::{array, ops::{Add, AddAssign, Mul, Neg, Sub, SubAssign}};
 #[derive(Clone, PartialEq, Debug)]
 
 
@@ -241,10 +241,10 @@ impl<const N: usize, F: Complex> Mul<Self> for &Operator<N,F> {
     fn mul(self, rhs: Self) -> Self::Output {
         let mut data = [[F::ZERO;N];N];
 
-        for i in 0..N {
+        for (i, row) in self.data.iter().enumerate() {
             for j in 0..N {
                 for k in 0..N {
-                    data[i][j].add_assign(self.data[i][k] * rhs.data[k][j]);
+                    data[i][j].add_assign(row[k] * rhs.data[k][j]);
                 }
             }
         }
@@ -314,9 +314,9 @@ impl Operator<2,C64> {
     };
 
     pub const H: &'static Self = &{
-        const entry: f64 = 1.0 / std::f64::consts::SQRT_2;
-        op64![[entry,0; entry,0],
-                [entry,0; -entry,0]]
+        const ENTRY: f64 = 1.0 / std::f64::consts::SQRT_2;
+        op64![[ENTRY,0; ENTRY,0],
+                [ENTRY,0; -ENTRY,0]]
     };
 }
 
@@ -326,9 +326,9 @@ impl Operator<2,C32> {
     };
 
     pub const H: &'static Self = &{
-        const entry: f32 = 1.0 / std::f32::consts::SQRT_2;
-        op32![[entry,0; entry,0],
-                [entry,0; -entry,0]]
+        const ENTRY: f32 = 1.0 / std::f32::consts::SQRT_2;
+        op32![[ENTRY,0; ENTRY,0],
+                [ENTRY,0; -ENTRY,0]]
     };
 }
 

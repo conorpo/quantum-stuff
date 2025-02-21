@@ -1,40 +1,67 @@
-use quantum_stuff::dynamic::*;
-use quantum_stuff::complex::*;
+#![allow(non_snake_case)]
 
-pub fn main() {
-    let mut input = State::qubit(false);
-    let mut output = State::qubit(true);
-    // 0
+use quantum_stuff::dynamic::*;
+use std::env;
+
+#[derive(PartialEq, Debug)]
+pub enum FType{
+    Constant,
+    Balanced
+}
+
+pub fn deutsch(f: impl Fn(usize) -> usize) -> FType {
+    let U = Gate::create_oracle(1, 1, f);
+
+    let mut input = State::from_qubit(false);
+    let mut output = State::from_qubit(true);
     
-    let H = Operator::hadamard();
+    let H = Gate::hadamard();
     input.apply(&H);
     output.apply(&H);
 
-    //1
-
     let mut state = input.tensor_product(output);    
-    
-    // //Change this
-    let my_func = [0,1];
-    let mut u = Matrix::zeroes(4);
-    *u.get_mut(my_func[0] ^ 0, 0) = C64::ONE;
-    *u.get_mut(my_func[0] ^ 1,1) = C64::ONE;
-    *u.get_mut(my_func[1] ^ 0,2) = C64::ONE;
-    *u.get_mut(my_func[1] ^ 1,3) = C64::ONE;
-    let U = Operator::try_from(u).unwrap();
-
     state.apply(&U);
 
-    //2
-
     state.apply_partial(0..1, &H);
-
-    //3
     
-    let res = state.measure_partial(0..1);
-    if res == 0 {
-        println!("Constant");
-    } else {
-        println!("Balaanced")
+    match state.measure_partial(0..1) {
+        0 => FType::Constant,
+        1 => FType::Balanced,
+        _ => panic!("How did we get here?")
     }
 }
+
+
+pub fn main() {
+    let args: Vec<String> = env::args().collect();
+    let f_0: usize = args.get(1).and_then(|n_string| n_string.parse().ok()).unwrap_or(0);
+    let f_1: usize = args.get(2).and_then(|needle_string| needle_string.parse().ok()).unwrap_or(1);
+
+    let f = |x: usize| {
+        [f_0, f_1][x]
+    };
+
+    let res = deutsch(f);
+
+    println!("The given function is {}", {
+        match res {
+            FType::Balanced => "BALANCED",
+            FType::Constant => "CONSTANT",
+        }
+    });
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{deutsch, FType};
+
+    #[test]
+    fn test_all() {
+        assert_eq!(deutsch(|x: usize| {[0,0][x]}), FType::Constant);
+        assert_eq!(deutsch(|x: usize| {[0,1][x]}), FType::Balanced);
+        assert_eq!(deutsch(|x: usize| {[1,0][x]}), FType::Balanced);
+        assert_eq!(deutsch(|x: usize| {[1,1][x]}), FType::Constant);
+        
+    }
+}
+

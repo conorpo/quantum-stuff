@@ -4,6 +4,7 @@
 
 use crate::complex::*;
 use super::vector::*;
+use std::fmt::Display;
 
 use std::ops::{Add, AddAssign, Neg, Sub, SubAssign, Mul, MulAssign};
 
@@ -16,14 +17,14 @@ pub struct Matrix<F: Complex> {
 }
 
 impl<F: Complex> Matrix<F> {
-    pub fn from_rows(iter: impl Iterator<Item = Vector<F>>, rows_hint: Option<usize>) -> Result<Self, ()> {
+    pub fn from_rows(iter: impl Iterator<Item = Vector<F>>, rows_hint: Option<usize>) -> Result<Self, &'static str> {
         let mut row_iter = iter.peekable();
         let (mut m, n) = (0, row_iter.peek().map(|row| row.dim()).unwrap_or(0));
 
         let mut data = Vec::with_capacity(rows_hint.unwrap_or(0) * n);
 
         for row in row_iter {
-            if row.dim() != n { return Err(()); }
+            if row.dim() != n { return Err("All provided rows must be the same length."); }
             m += 1;
 
             for entry in row.iter() {
@@ -53,10 +54,10 @@ impl<F: Complex> Matrix<F> {
         }
     }
 
-    pub fn zeroes(n: usize) -> Self {
+    pub fn zeroes(m: usize, n: usize) -> Self {
         Self {
-            dim: (n,n),
-            data: vec![F::ZERO; n*n]
+            dim: (m,n),
+            data: vec![F::ZERO; m*n]
         }
     }
 
@@ -119,6 +120,7 @@ impl<F: Complex> Matrix<F> {
     pub fn fuzzy_equals(&self, rhs: &Self) -> bool {
         self.dim() == rhs.dim() && self.data.iter().zip(rhs.data.iter()).all(|(a,b)| a.fuzzy_equals(*b))
     }
+
     pub fn is_identity(&self) -> bool {
         if !self.is_square() { return false; }
 
@@ -130,6 +132,15 @@ impl<F: Complex> Matrix<F> {
                 } else {
                     F::ZERO
                 });
+
+                // if !is_identity {
+                //     dbg!("Failed here: {} != {} ({r},{c})",self.get(r,c), if r == c {
+                //         F::ONE
+                //     } else {
+                //         F::ZERO
+                //     });
+                //     break 'main;
+                // }
             }
         }
         is_identity
@@ -150,18 +161,15 @@ impl<F: Complex> Matrix<F> {
     }
 
     //TODO: Fix This
-    // pub fn is_unitary(&self) -> bool {
-    //     if !self.is_square() { return false; }
+    pub fn is_unitary(&self) -> bool {
+        if !self.is_square() { return false; }
 
-    //     let adj = self.clone().adjoint();
-    //     let b = (self * &adj).unwrap();
-    //     let a = (&adj * self).unwrap();
+        let adj = self.adjoint();
+        let b = (self * &adj).unwrap();
+        let a = (&adj * self).unwrap();
 
-    //     dbg!(&a, &b);
-    //     dbg!(a.is_identity(), b.is_identity());
-        
-    //     a.is_identity() && b.is_identity()
-    // }
+        a.is_identity() && b.is_identity()
+    }
 
     pub fn tensor_product(&self, rhs: &Self) -> Self {
         let (m1, n1) = self.dim;
@@ -194,14 +202,23 @@ impl<F: Complex> Matrix<F> {
     // }
 }
 
+impl<F: Complex> Display for Matrix<F> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for row in self.row_iter() {
+            f.write_fmt(format_args!("{},\n", &row))?
+        }
+        Ok(())
+    }
+}
+
 impl<const M: usize, const N: usize, F: Complex> From<[[F; N];M]> for Matrix<F> {
     fn from(arr: [[F; N];M]) -> Self {
         let mut data = Vec::with_capacity(N * M);
         let dim = (M, N);
 
-        for r in 0..M {
-            for c in 0..N {
-                data.push(arr[r][c]);
+        for row in arr {
+            for entry in row {
+                data.push(entry)
             }
         }
 
@@ -212,12 +229,12 @@ impl<const M: usize, const N: usize, F: Complex> From<[[F; N];M]> for Matrix<F> 
     }
 }
 
-pub struct VecIter<'a, const col_order: bool,  F: Complex> {
+pub struct VecIter<'a, const COL_ORDER: bool,  F: Complex> {
     mat: &'a Matrix<F>,
     index: usize
 }
 
-impl<'a, F:Complex> Iterator for VecIter<'a,false, F> {
+impl<F:Complex> Iterator for VecIter<'_,false, F> {
     type Item = Vector<F>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -232,7 +249,7 @@ impl<'a, F:Complex> Iterator for VecIter<'a,false, F> {
     }
 }
 
-impl<'a, F:Complex> Iterator for VecIter<'a,true, F> {
+impl<F:Complex> Iterator for VecIter<'_,true, F> {
     type Item = Vector<F>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -410,20 +427,20 @@ mod tests {
         assert_eq!((&a * &b).unwrap(), ab);
     }
 
-    // #[test]
-    // fn test_unary_operators() {
-    //     let a = dmat64![[7; 6,5],[6,-5; -3]];
+    #[test]
+    fn test_unary_operators() {
+        let a = dmat64![[7; 6,5],[6,-5; -3]];
 
-    //     assert!(a.is_hermitian());
-    //     assert!(!a.is_unitary());
+        assert!(a.is_hermitian());
+        assert!(!a.is_unitary());
 
-    //     let u = Matrix::from([[c64!(1,1) / 2.0, c64!(0,1) / 3.0.sqrt(), c64!(3,1)/(2.0 * 15.0.sqrt())],
-    //                         [c64!(-1)/2.0, c64!(1) / 3.0.sqrt(), c64!(4,3) / (2.0 * 15.0.sqrt())],
-    //                         [c64!(1.0)/2.0, c64!(0,-1) / 3.0.sqrt(), c64!(0,5) / (2.0 * 15.0.sqrt())]]);
-    //     assert!(u.is_unitary());
-    //     assert!(!u.is_hermitian());
+        let u = Matrix::from([[c64!(1,1) / 2.0, c64!(0,1) / 3.0.sqrt(), c64!(3,1)/(2.0 * 15.0.sqrt())],
+                            [c64!(-1)/2.0, c64!(1) / 3.0.sqrt(), c64!(4,3) / (2.0 * 15.0.sqrt())],
+                            [c64!(1.0)/2.0, c64!(0,-1) / 3.0.sqrt(), c64!(0,5) / (2.0 * 15.0.sqrt())]]);
+        assert!(u.is_unitary());
+        assert!(!u.is_hermitian());
 
-    // }
+    }
 
     #[test]
     fn test_tensor_product() {

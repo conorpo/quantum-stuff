@@ -1,11 +1,7 @@
-#![feature(isqrt)]
 #![feature(generic_const_exprs)]
-#![feature(inherent_associated_types)]
-#![feature(concat_idents)]
-#![feature(if_let_guard)]
 #![allow(unused_mut)]
-#![allow(unused_assignments)]
 #![feature(random)]
+#![allow(unused_assignments)]
 
 #[macro_use]
 pub mod complex;

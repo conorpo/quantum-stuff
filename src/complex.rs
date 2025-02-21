@@ -1,8 +1,7 @@
 
-use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use std::fmt::{Display,Debug};
-use std::f64::consts::PI;
-const TAU: f64 = 2.0 * PI;
+//const TAU: f64 = 2.0 * PI;
 
 // Trait for types allowed as complex number components MARK: Field
 pub trait Real: Sized
@@ -15,7 +14,7 @@ pub trait Real: Sized
 }
 
 impl Real for f32 {
-    const EPSILON: Self = f32::EPSILON * 10.0;
+    const EPSILON: Self = 0.01;
     const ONE: Self = 1.0;
     const ZERO: Self = 0.0;
     fn sqrt(self) -> Self {
@@ -24,7 +23,7 @@ impl Real for f32 {
 }
 
 impl Real for f64 {
-    const EPSILON: Self = f64::EPSILON * 10.0;
+    const EPSILON: Self = 0.01;
     const ONE: Self = 1.0;
     const ZERO: Self = 0.0;
     fn sqrt(self) -> Self {
@@ -45,7 +44,7 @@ pub struct C64 {
     pub i: f64,
 }
 
-pub trait Complex: Add<Output = Self> + AddAssign + Sub<Output = Self> + SubAssign + Neg<Output = Self> + Mul<Output = Self> + MulAssign + Div<Output = Self> + DivAssign + Copy + Clone + PartialEq + Debug
+pub trait Complex: Add<Output = Self> + AddAssign + Sub<Output = Self> + SubAssign + Neg<Output = Self> + Mul<Output = Self> + MulAssign + Div<Output = Self> + DivAssign + Copy + Clone + PartialEq + Debug + Display
 where Self: Sized
 {
     type RealType: Real + PartialEq + Debug;
@@ -83,6 +82,26 @@ impl C64 {
     }
 }
 
+impl Display for C32 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.i < 0.0 {
+            f.write_fmt(format_args!("{:1.2}{:1.2}i", self.r, self.i))
+        } else {
+            f.write_fmt(format_args!("{:1.2}+{:1.2}i", self.r, self.i))
+        }
+    }
+}
+
+impl Display for C64 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.i < 0.0 {
+            f.write_fmt(format_args!("{:1.2}{:1.2}i", self.r, self.i))
+        } else {
+            f.write_fmt(format_args!("{:1.2}+{:1.2}i", self.r, self.i))
+        }
+    }
+}
+
 impl Complex for C32 {
     type RealType = f32;
     const ZERO: Self = C32 { r: 0.0, i: 0.0};
@@ -100,7 +119,7 @@ impl Complex for C32 {
     fn exp(self) -> Self {
         let Self {r, i} = self;
         let (s,c) = i.sin_cos();
-        Self::new(r.exp() + c, s)
+        Self::new(c, s) * C32::new(r.exp(),0.0)
     }
 
     fn conjugate(self) -> Self {
@@ -115,7 +134,7 @@ impl Complex for C32 {
     }
 
     fn modulus_squared(self) -> Self::RealType {
-        (self.r * self.r + self.i * self.i)
+        self.r * self.r + self.i * self.i
     }
 
     fn pow(self, mut exp: u32) -> Self {
@@ -135,8 +154,8 @@ impl Complex for C32 {
     }
 
     fn fuzzy_equals(self, rhs: Self) -> bool {
-        (self.get_r() - rhs.get_r()).abs() < Self::RealType::EPSILON &&
-        (self.get_i() - rhs.get_i()).abs() < Self::RealType::EPSILON
+        (self.get_r() - rhs.get_r()).abs() < 0.01 &&
+        (self.get_i() - rhs.get_i()).abs() < 0.01
     }
 
     fn real(r: Self::RealType) -> Self {
@@ -164,7 +183,7 @@ impl Complex for C64 {
     fn exp(self) -> Self {
         let Self {r, i} = self;
         let (s,c) = i.sin_cos();
-        Self::new(r.exp() + c, s)
+        Self::new(c, s) * C64::new(r.exp(),0.0)
     }
 
     fn real(r: Self::RealType) -> Self {
@@ -183,7 +202,7 @@ impl Complex for C64 {
     }
     
     fn modulus_squared(self) -> Self::RealType {
-        (self.r * self.r + self.i * self.i)
+        self.r * self.r + self.i * self.i
     }
 
     fn modulus(self) -> Self::RealType {
@@ -207,8 +226,8 @@ impl Complex for C64 {
     }
 
     fn fuzzy_equals(self, rhs: Self) -> bool {
-        (self.get_r() - rhs.get_r()).abs() < Self::RealType::EPSILON &&
-        (self.get_i() - rhs.get_i()).abs() < Self::RealType::EPSILON
+        (self.get_r() - rhs.get_r()).abs() < 0.01 &&
+        (self.get_i() - rhs.get_i()).abs() < 0.01
     }
 }
 
@@ -297,19 +316,6 @@ macro_rules! c64 {
 
             C64::new(r,i)
         }
-    }
-}
-
-impl Display for C32
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let op = if self.get_i() < 0.0 {
-            '-'
-        } else {
-            '+'
-        };
-
-        f.write_fmt(format_args!("{} {op} {}i", self.r, self.i.abs()))
     }
 }
 

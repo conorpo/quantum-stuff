@@ -1,22 +1,19 @@
 use super::vector::*;
 use crate::complex::*;
-use super::operator::*;
+use super::gate::*;
 use std::{ops::Range, random::random};
 
 // At this point keep state invariants (normalized, etc..)
+#[derive(Clone)]
 pub struct State(Vector<C64>);
 
 
 impl State {
-    pub fn new(vector: Vector<C64>) -> Result<Self, ()> {
-        if (vector.norm() - 1.0).abs() > f64::EPSILON * 5.0 {
-            return Err(());
-        }
-
-        Ok(Self(vector))
+    pub fn get(&self) -> &Vector<C64> {
+        &self.0
     }
 
-    pub fn qubit(enabled: bool) -> Self {
+    pub fn from_qubit(enabled: bool) -> Self {
         Self(
             Vector::from(if enabled {
                 &[C64::ZERO, C64::ONE][..]
@@ -32,21 +29,38 @@ impl State {
         )    
     }
 
-    pub fn apply(&mut self, op: &Operator) {
+    pub fn apply(&mut self, op: &Gate) {
         if op.get().dim().0 != self.0.dim() {
             panic!("Provided operator dimension does not match state dimension");
         }
         self.0 = (op.get() * &self.0).unwrap();
     }
 
-    pub fn apply_partial(&mut self, interval: Range<usize> ,op: &Operator) {
-        assert_eq!(2usize.pow(interval.len() as u32), op.dim());
 
-        todo!();
+    pub fn apply_partial(&mut self, interval: Range<usize> ,op: &Gate) {
+        assert_eq!(2usize.pow(interval.len() as u32), op.dim());
+        
+        let left_size = 2_usize.pow(interval.start as u32);
+        let right_size = self.0.dim() / 2_usize.pow(interval.end as u32);
+
+        let left_id = Gate::identity(left_size);
+        let right_id = Gate::identity(right_size);
+
+        let full_op = left_id.tensor_product(op).tensor_product(&right_id);
+
+        self.apply(&full_op)
     }
 
-    pub fn qubits(&self) -> usize {
+    pub fn num_qubits(&self) -> usize {
         self.0.dim().ilog2() as usize
+    }
+
+    pub fn from_qubits(qubits: impl Iterator<Item = bool>) -> Self {
+        let mut state = State::try_from(Vector::from(&[C64::ONE][..])).unwrap();
+        for qubit in qubits {
+            state = state.tensor_product(State::from_qubit(qubit))
+        }
+        state
     }
 
     pub fn measure(&mut self) -> usize {
@@ -60,6 +74,7 @@ impl State {
             sum += prob;
             if sample < sum {
                 measured = Some(i);
+                break;
             }
         };
 
@@ -74,7 +89,43 @@ impl State {
 
     pub fn measure_partial(&mut self, interval: Range<usize>) -> usize {
         let res = self.measure();
-        let q = self.qubits();
-        (res / (2 << (q - interval.end))) % (2 << (q - interval.start))
+        let q = self.num_qubits();
+        (res >> (q - interval.end)) % (1 << (q - interval.start))
+    }
+}
+
+impl TryFrom<Vector<C64>> for State {
+    type Error = ();
+    fn try_from(value: Vector<C64>) -> Result<Self, Self::Error> {
+        if !value.dim().is_power_of_two() {
+            return Err(())
+        }
+
+        let mut sum = value.iter().fold(0.0, |acc, cur| acc + cur.modulus_squared());
+        if (sum - 1.0).abs() < f64::EPSILON * 10.0 {
+            Ok(Self(value))
+        } else {
+            Err(())
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::dynamic::vector::Vector;
+    use crate::complex::*;
+    use super::State;
+
+    #[test]
+    fn test_construction() {
+        let a = Vector::from_iter((1..2).map(|n| C64::new(n as f64, 0.0)), Some(1));
+        let b = Vector::from_iter((0..2).map(|_| C64::new(1.0 / 2.0.sqrt(),0.0)), Some(2));
+        let c = Vector::<C64>::zero(16);
+        let d = dvec64![2; 1,3;2; 3,-2];
+
+        assert!(TryInto::<State>::try_into(a).is_ok());
+        assert!(TryInto::<State>::try_into(b).is_ok());
+        assert!(TryInto::<State>::try_into(c).is_err());
+        assert!(TryInto::<State>::try_into(d).is_err());
     }
 }

@@ -1,7 +1,4 @@
 use std::random::random;
-use std::array;
-
-#[macro_use]
 use crate::complex::*;
 use std::slice::Iter;
 
@@ -10,7 +7,7 @@ pub struct State<const N: usize, F: Complex> {
     pub data: [F; N]
 }
 
-use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Rem, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 // MARK: Vector
 impl<const N: usize, F: Complex> State<N, F> {
@@ -201,7 +198,7 @@ macro_rules! state32 {
 
 #[cfg(test)]
 mod tests {
-    use std::{array, vec};
+    use std::array;
 
     use crate::complex::*;
     use super::*;
