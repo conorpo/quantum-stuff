@@ -19,6 +19,10 @@ impl Gate {
         Self (self.0.tensor_product(&rhs.0))
     }
 
+    pub fn inverse(&self) -> Self {
+        unsafe { Self::from_matrix_unchecked(self.get().adjoint()) }
+    }
+
     pub fn identity(n: usize) -> Self {
         Self (Matrix::eye(n))
     }

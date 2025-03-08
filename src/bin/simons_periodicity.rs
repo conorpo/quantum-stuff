@@ -56,7 +56,7 @@ pub fn simons_periodicity(n: usize, f: impl Fn(usize) -> usize) -> usize {
 
         state.apply(&H_N_I_N);
 
-        let res = state.measure_partial(0..n);
+        let res = state.measure_partial(0..n).0;
 
         if !set.contains(&res) && independent(n, [vals.clone(),vec![res]].concat()) {
             set.insert(res);

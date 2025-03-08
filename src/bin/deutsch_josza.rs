@@ -25,7 +25,7 @@ pub fn deutsch_josza(n: usize, f: impl Fn(usize) -> usize) -> FType {
 
     state.apply_partial(0..n, &H_N);
     
-    let res = state.measure_partial(0..n);
+    let res = state.measure_partial(0..n).0;
     match res {
         0 => FType::Constant,
         _ => FType::Balanced

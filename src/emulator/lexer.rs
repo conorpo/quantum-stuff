@@ -1,6 +1,5 @@
 use std::{collections::HashMap, io::{BufReader, Bytes, Read}};
 use std::io::BufRead;
-use super::gates::*;
 
 #[derive(Debug, Clone)]
 pub struct Token {
@@ -32,6 +31,14 @@ pub enum TokenType {
     Inverse,
     Measure,
     NewLine,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum PrimitiveGate {
+    H,
+    CNOT,
+    R(f64),
+    I(usize)
 }
 
 

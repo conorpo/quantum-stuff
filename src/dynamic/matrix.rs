@@ -73,7 +73,6 @@ impl<F: Complex> Matrix<F> {
     pub fn transpose(&self) -> Self {
         let (m,n) = self.dim;
         let mut data = Vec::with_capacity(n*m);
-
         for c in 0..n {
             for r in 0..m {
                 data.push(self.get(r,c));

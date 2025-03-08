@@ -64,33 +64,67 @@ impl State {
     }
 
     pub fn measure(&mut self) -> usize {
-        let rand: u32 = random::<u32>().min(u32::MAX - 1);
-        let sample = (rand as f64) / (u32::MAX as f64);
-        let mut probs = self.0.iter().map(|entry| entry.modulus_squared());
-        let mut sum = 0.0;
-
-        let mut measured = None;
-        for (i, prob) in probs.enumerate() {
-            sum += prob;
-            if sample < sum {
-                measured = Some(i);
-                break;
-            }
-        };
-
-        if let Some(measured) = measured {
-            self.0.data.iter_mut().for_each(|entry| *entry = C64::ZERO);
-            self.0.data[measured] = C64::ONE;
-            measured
-        } else {
-            panic!("How did we get here");
+        let mut prob_prefix_sum = Vec::with_capacity(self.0.dim());
+        let mut prob = 0.0;
+        for i in 0..(1 << self.num_qubits()) {
+            prob += self.0.get(i).modulus_squared();
+            prob_prefix_sum.push(prob);
         }
+
+        let mut measured = (1 << self.num_qubits());
+        while measured == 1 << self.num_qubits() {
+            let rand: u64 = random::<u64>().min(u64::MAX - 1);
+            let sample = (rand as f64) / (u64::MAX as f64);
+    
+            measured = prob_prefix_sum.binary_search_by(|probe| {
+                probe.partial_cmp(&sample).unwrap().then(std::cmp::Ordering::Greater)
+            }).unwrap_err();
+        }
+
+        
+        self.0.data.iter_mut().for_each(|entry| *entry = C64::ZERO);
+        self.0.data[measured] = C64::ONE;
+        measured
     }
 
-    pub fn measure_partial(&mut self, interval: Range<usize>) -> usize {
-        let res = self.measure();
+    pub fn measure_partial(self, interval: Range<usize>) -> (usize, Self){
         let q = self.num_qubits();
-        (res >> (q - interval.end)) % (1 << (q - interval.start))
+        
+        let mut prob_prefix_sum = Vec::new();
+
+        let mut prob = 0.0;
+        for m in 0..(1 << interval.len()) {
+            for l in 0..(1 << interval.start) {
+                for r in 0..(1 << (q - interval.end)) {
+                    let k = (l << (q - interval.start)) + (m << (q - interval.end)) + r;
+                    prob += self.0.get(k).modulus_squared();
+                }
+            }
+            prob_prefix_sum.push(prob);
+        }
+
+        let mut measured = (1 << interval.len());
+        while measured == (1 << interval.len()){
+            let random_u64 = random::<u64>().min(u64::MAX - 1);
+            let random_sample = (random_u64 as f64) / (u64::MAX as f64);
+    
+            measured = prob_prefix_sum.binary_search_by(|probe| {
+                probe.partial_cmp(&random_sample).unwrap().then(std::cmp::Ordering::Greater)
+            }).unwrap_err();
+        }
+
+        let mut new_state_vector = Vector::<C64>::zero(1 << (q - interval.len()));
+        for l in 0..(1 << interval.start) {
+            for r in 0..(1 << (q - interval.end)) {
+                let k = (l << (q - interval.start)) + (measured << (q - interval.end)) + r;
+                new_state_vector.data[l * (1 << (q - interval.end)) + r] += self.0.get(k);
+            }
+        }
+        new_state_vector.normalize();
+        
+        let new_state = State::try_from(new_state_vector).expect("Could not create remaning state");
+
+        (measured, new_state)
     }
 }
 

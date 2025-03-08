@@ -51,6 +51,11 @@ impl<F: Complex> Vector<F> {
         self.data[index]
     }
 
+    pub fn normalize(&mut self) {
+        let norm = self.norm();
+        *self *=  F::ONE / F::from_real(norm);
+    }
+
     pub fn norm(&self) -> F::RealType {
         let self_dot_self = self.dot(self).unwrap();
         //debug_assert_eq!(self_dot_self.get_i(), F::ZERO);

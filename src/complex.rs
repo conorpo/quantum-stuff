@@ -1,4 +1,5 @@
 
+use core::f64;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use std::fmt::{Display,Debug};
 //const TAU: f64 = 2.0 * PI;
@@ -57,10 +58,11 @@ where Self: Sized
     fn modulus(self) -> Self::RealType;
     fn conjugate(self) -> Self;
     fn fuzzy_equals(self, rhs: Self) -> bool;
-    fn pow(self, exp: u32) -> Self;
-    fn real(r: Self::RealType) -> Self;
+    fn pow(self, exp: usize) -> Self;
+    fn from_real(r: Self::RealType) -> Self;
     fn exp(self) -> Self;
     fn modulus_squared(self) -> Self::RealType;
+    fn nth_root_of_unity(n: usize) -> Self;
     
 }
 
@@ -137,7 +139,7 @@ impl Complex for C32 {
         self.r * self.r + self.i * self.i
     }
 
-    fn pow(self, mut exp: u32) -> Self {
+    fn pow(self, mut exp: usize) -> Self {
         let mut res = Self::ONE;  // Presumably 1 + 0i
         let mut mult = self;                    // Base (the 'self' Complex number)
         while exp > 0 {
@@ -158,11 +160,16 @@ impl Complex for C32 {
         (self.get_i() - rhs.get_i()).abs() < 0.01
     }
 
-    fn real(r: Self::RealType) -> Self {
+    fn from_real(r: Self::RealType) -> Self {
         Self {
             r,
             i: 0.0
         }
+    }
+
+    fn nth_root_of_unity(n: usize) -> Self {
+        let theta = std::f32::consts::TAU / n as f32;
+        Self::exp(Self::new(0.0, theta))
     }
 }
 
@@ -186,7 +193,7 @@ impl Complex for C64 {
         Self::new(c, s) * C64::new(r.exp(),0.0)
     }
 
-    fn real(r: Self::RealType) -> Self {
+    fn from_real(r: Self::RealType) -> Self {
         Self {
             r,
             i: 0.0
@@ -209,7 +216,7 @@ impl Complex for C64 {
         (self.r * self.r + self.i * self.i).sqrt()
     }
 
-    fn pow(self, mut exp: u32) -> Self {
+    fn pow(self, mut exp: usize) -> Self {
         let mut res = Self::ONE;  // Presumably 1 + 0i
         let mut mult = self;                    // Base (the 'self' Complex number)
         while exp > 0 {
@@ -228,6 +235,11 @@ impl Complex for C64 {
     fn fuzzy_equals(self, rhs: Self) -> bool {
         (self.get_r() - rhs.get_r()).abs() < 0.01 &&
         (self.get_i() - rhs.get_i()).abs() < 0.01
+    }
+
+    fn nth_root_of_unity(n: usize) -> Self {
+        let theta = std::f64::consts::TAU / n as f64;
+        Self::new(0.0, theta).exp()
     }
 }
 
@@ -602,6 +614,18 @@ mod tests {
         let z = C32::new(3f32,2f32);
 
         assert_eq!(z * z.conjugate(), C32::new(z.modulus().powf(2.0),0.0))
+    }
+
+    #[test]
+    fn test_roots_of_unity() {
+        for n in [2,3,5,100,1000] {
+            let first_root = C64::nth_root_of_unity(n);
+
+            for i in 0..n {
+                let root = first_root.pow(i);
+                assert!(root.pow(n).fuzzy_equals(C64::ONE));
+            }
+        }
     }
 
     // #[test]

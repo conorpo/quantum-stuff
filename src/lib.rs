@@ -12,6 +12,5 @@ pub mod static_;
 #[macro_use]
 pub mod dynamic;
 
-
-// pub mod misc;
-// pub mod emulator;
+pub mod misc;
+pub mod emulator;

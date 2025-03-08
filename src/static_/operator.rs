@@ -107,19 +107,12 @@ impl<const N: usize, F: Complex> Operator<N,F> {
     pub fn variance(&self, state: &State<N,F>) -> Result<F::RealType, &'static str> {
         let expected = self.expected_value(state)?;
 
-        let demeaned = -(Self::eye() * F::real(expected)) + self;
+        let demeaned = -(Self::eye() * F::from_real(expected)) + self;
         let demeaned_squared = &demeaned * &demeaned;
         
         Ok(demeaned_squared.expected_value(state)?)
 
     }
-
-    // Might just implement this myself
-    // pub fn eigenpairs_hermitian(&self) {
-    //     assert!(self.is_hermitian());
-
-    //     let stack_req = compute_hermitian_evd_req(N, ComputeVectors::Yes, Parallelism::None, SymmetricEvdParams::default());
-    // }
 }
 
 impl<const N:usize> Operator<N, C64> {

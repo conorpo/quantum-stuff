@@ -24,7 +24,7 @@ pub fn deutsch(f: impl Fn(usize) -> usize) -> FType {
 
     state.apply_partial(0..1, &H);
     
-    match state.measure_partial(0..1) {
+    match state.measure_partial(0..1).0 {
         0 => FType::Constant,
         1 => FType::Balanced,
         _ => panic!("How did we get here?")
