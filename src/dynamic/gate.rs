@@ -1,4 +1,5 @@
 use core::f64;
+use std::ops::Mul;
 
 use super::matrix::*;
 use crate::complex::*;
@@ -123,6 +124,16 @@ impl TryFrom<Matrix<C64>> for Gate {
         }
     }
 }
+
+impl Mul for &Gate {
+    type Output = Result<Gate, ()>;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        let mat = (&self.0 * &rhs.0)?; 
+        Ok(Gate(mat))
+    }
+}
+
 
 #[cfg(test)]
 mod tests {

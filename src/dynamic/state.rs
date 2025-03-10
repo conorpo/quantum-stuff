@@ -126,6 +126,49 @@ impl State {
 
         (measured, new_state)
     }
+    
+
+    pub fn measure_partial_leave_state(&mut self, interval: Range<usize>) -> usize {
+        let q = self.num_qubits();
+        
+        let mut prob_prefix_sum = Vec::new();
+
+        let mut prob = 0.0;
+        for m in 0..(1 << interval.len()) {
+            for l in 0..(1 << interval.start) {
+                for r in 0..(1 << (q - interval.end)) {
+                    let k = (l << (q - interval.start)) + (m << (q - interval.end)) + r;
+                    prob += self.0.get(k).modulus_squared();
+                }
+            }
+            prob_prefix_sum.push(prob);
+        }
+
+        let mut measured = (1 << interval.len());
+        while measured == (1 << interval.len()){
+            let random_u64 = random::<u64>().min(u64::MAX - 1);
+            let random_sample = (random_u64 as f64) / (u64::MAX as f64);
+    
+            measured = prob_prefix_sum.binary_search_by(|probe| {
+                probe.partial_cmp(&random_sample).unwrap().then(std::cmp::Ordering::Greater)
+            }).unwrap_err();
+        }
+        
+        //Zero out states that don't match measurement
+        for m in 0..(1 << interval.len()) {
+            if m == measured { continue; }
+            for l in 0..(1 << interval.start) {
+                for r in 0..(1 << (q - interval.end)) {
+                    let k = (l << (q - interval.start)) + (m << (q - interval.end)) + r;
+                    self.0.data[k] = C64::ZERO;
+                }
+            }
+            prob_prefix_sum.push(prob);
+        }
+        self.0.normalize();
+
+        measured
+    }
 }
 
 impl TryFrom<Vector<C64>> for State {

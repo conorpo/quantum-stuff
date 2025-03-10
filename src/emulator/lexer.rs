@@ -57,14 +57,11 @@ pub fn scan(stream: &mut impl BufRead) -> Result<Vec<Token>, &'static str>{
 
     for (line_number, line) in stream.lines().enumerate() {
         let line = line.unwrap();
-        println!("{} {}",line_number, &line);
         if line.len() == 0 {
             continue;
         }
         let mut col = 0;
-        print!("\n tokens: ");
         for word in line.split_whitespace() {
-            print!("|{}|", &word);
             let token_type = if let Some(token_type) = keywords.get(word) {
                 token_type.clone()
             } else if let Some(byte_array) =  word.strip_prefix('[').and_then(|s| s.strip_suffix(']')) {

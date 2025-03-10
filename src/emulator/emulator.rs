@@ -41,19 +41,21 @@ impl Register {
     fn measure(&self) -> Result<usize, ()> {
         let interval = self.interval.0..self.interval.1;
         let mut state = self.state.take().unwrap();
-        let (measured, rest) = state.measure_partial(interval);
-
-        // A bit ugly but this emulator is secondary, just going to reconstruct the state
-        // todo
+        let measured = state.measure_partial_leave_state(interval);
+        self.state.set(Some(state));
         Ok(measured)
+    }
+
+    fn len(&self) -> usize {
+        self.interval.1 - self.interval.0
     }
 }
 
-fn parse_identifier(possible_token: Option<Token>, first_token: &Token, label: &'static str) -> Result<String, RuntimeError> {
+fn parse_identifier<'a>(possible_token: Option<&'a Token>, first_token: &'a Token, label: &'static str) -> Result<String, RuntimeError<'a>> {
     match possible_token {
-        Some(Token { ty: TokenType::Identifier(name), ..}) => {Ok(name)},
+        Some(Token { ty: TokenType::Identifier(name), ..}) => {Ok(name.to_owned())},
         token if token.is_some() => { Err(RuntimeError::new(token, format!("Expected IDENTIFIER token for {label}, found"))) },
-        None => { Err(RuntimeError::new(Some(first_token.clone()), format!("Missing {label} (IDENTIFER) for the"))) },
+        None => { Err(RuntimeError::new(Some(first_token), format!("Missing {label} (IDENTIFER) for the"))) },
         _ => panic!("How did we get here?")
     }
 }
@@ -61,7 +63,7 @@ fn parse_identifier(possible_token: Option<Token>, first_token: &Token, label: &
 type RegisterMap<'a> = HashMap<String, Register>;
 
 
-fn get_register<'a>(possible_token: Option<Token>, first_token: &Token, registers: &'a RegisterMap) -> Result<&'a Register, RuntimeError> {
+fn get_register<'a,'r>(possible_token: Option<&'a Token>, first_token: &'a Token, registers: &'r RegisterMap) -> Result<&'r Register, RuntimeError<'a>> {
     let register_name = parse_identifier(possible_token.clone(), first_token, "register name argument")?;
     match registers.get(&register_name) {
         Some(entry) => Ok(entry),
@@ -74,7 +76,7 @@ fn get_register<'a>(possible_token: Option<Token>, first_token: &Token, register
 
 type OperatorMap = HashMap<String, Rc<Gate>>;
 
-fn get_gate<'a>(possible_token: Option<Token>, first_token: &Token, gate_map: &'a OperatorMap) -> Result<Rc<Gate>, RuntimeError> {
+fn get_gate<'a,'o>(possible_token: Option<&'a Token>, first_token: &'a Token, gate_map: &'o OperatorMap) -> Result<Rc<Gate>, RuntimeError<'a>> {
     match possible_token.as_ref() {
         Some(Token {ty: TokenType::Identifier(ident),..}) => {
             match gate_map.get(ident) {
@@ -96,26 +98,27 @@ fn get_gate<'a>(possible_token: Option<Token>, first_token: &Token, gate_map: &'
             Err(RuntimeError::new(possible_token, "Expected operator identifier OR gate primitive, found".to_owned()))
         },
         None => {
-            Err(RuntimeError::new(Some(first_token.clone()), "Missing operator agument (IDENTIFIER | PRIMITIVE_GATE) for the".to_owned()))
+            Err(RuntimeError::new(Some(first_token), "Missing operator agument (IDENTIFIER | PRIMITIVE_GATE) for the".to_owned()))
         }
     }
 }
 
 //This is going to be cancer with const generic Vector / Matrix types.
-pub fn emulate(tokens: Vec<Token>) -> Result<String, RuntimeError> {
-    let mut results = String::new();
+pub fn emulate(tokens: &Vec<Token>) -> Result<Vec<usize>, RuntimeError> {
+    let mut results = Vec::new();
 
     let mut states: Vec<Rc<Cell<Option<State>>>> = Vec::new();
     let mut register_map: RegisterMap = HashMap::new();
     let mut operators: OperatorMap = HashMap::new();
 
-    let mut token_iter = tokens.into_iter().peekable();
+    let mut token_iter = tokens.iter().peekable();
     while token_iter.peek().is_some() {
         let first_token = match token_iter.next() {
             Some(token) => token,
             None => { continue; }
         };
 
+        // dbg!(first_token);
         match &first_token.ty {
             TokenType::Initialize => {
                 let name = parse_identifier(token_iter.next(), &first_token, "register name argument")?;
@@ -135,11 +138,7 @@ pub fn emulate(tokens: Vec<Token>) -> Result<String, RuntimeError> {
 
             TokenType::Select => {
                 let name_token = token_iter.next();
-                let name = match name_token {
-                    Some(Token { ty: TokenType::Identifier(name), ..}) => {name}
-                    Some(token) => { return Err(RuntimeError::new(Some(token), "Expected IDENTIFER for slice name, found".to_owned()))},
-                    None => { return Err(RuntimeError::new(Some(first_token), "Missing slice name argument (IDENTIFER) for the ".to_owned())); }
-                };
+                let name = parse_identifier(name_token, first_token, "subregister name")?;
 
                 let sub_register = get_register(token_iter.next(), &first_token, &register_map)?;
                 let len = sub_register.interval.1 - sub_register.interval.0;
@@ -201,7 +200,7 @@ pub fn emulate(tokens: Vec<Token>) -> Result<String, RuntimeError> {
                         TokenType::Inverse => {
                             let a = get_gate(token_iter.next(), &first_token, &operators)?;
                             
-                            a.as_ref().clone().adjoint()
+                            a.as_ref().clone().inverse()
                         },
                         _ => {
                             return Err(RuntimeError::new(Some(token), "Expected an operator macro (TENSOR, CONCAT, INVERSE), instead found".to_owned()));
@@ -224,10 +223,10 @@ pub fn emulate(tokens: Vec<Token>) -> Result<String, RuntimeError> {
 
                 let register = get_register(token_iter.next(), &first_token, &register_map)?;
                 //let results = register.measure(cheat);
-                results.push_str(&(match cheat {
-                    true => register.measure().unwrap().to_string(), // todo add cheat back
-                    false => register.measure().unwrap().to_string()  
-                }));
+                results.push(match cheat {
+                    true => register.measure().unwrap(), // todo add cheat back
+                    false => register.measure().unwrap()
+                });
             },
             _ => {}
         }
@@ -238,17 +237,17 @@ pub fn emulate(tokens: Vec<Token>) -> Result<String, RuntimeError> {
         }
     }
 
-    todo!();
+    Ok(results)
 }
 
 #[derive(Debug)]
-pub struct RuntimeError {
-    token: Option<Token>,
+pub struct RuntimeError<'a> {
+    token: Option<&'a Token>,
     info: String
 }
 
-impl RuntimeError {
-    pub fn new(token: Option<Token>, info: String) -> Self {
+impl<'a> RuntimeError<'a> {
+    pub fn new(token: Option<&'a Token>, info: String) -> Self {
         Self {
             token,
             info
@@ -256,7 +255,7 @@ impl RuntimeError {
     }
 }
 
-impl std::fmt::Display for RuntimeError {
+impl<'a> std::fmt::Display for RuntimeError<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.token.as_ref() {
             Some(token) => {
@@ -269,4 +268,55 @@ impl std::fmt::Display for RuntimeError {
     }
 }
 
-impl Error for RuntimeError {}
+impl<'a> Error for RuntimeError<'a> {}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use crate::emulator::lexer::*;
+
+    use super::emulate;
+
+    #[test]
+    pub fn test_basic() {
+        let mut program = "
+INITIALIZE R 2
+U TENSOR H H
+APPLY U R
+MEASURE R".as_bytes();
+        
+        let tokens = scan(&mut program).unwrap();
+        
+        let mut results_map = HashMap::<usize,u32>::new();
+
+        for _ in 0..1000 {
+            let res = emulate(&tokens).unwrap()[0];
+            results_map.entry(res).and_modify(|count| *count += 1).or_insert(1);
+        }
+
+        assert!(*results_map.get(&0).unwrap() > 200);
+        assert!(*results_map.get(&1).unwrap() > 200);
+        assert!(*results_map.get(&2).unwrap() > 200);
+        assert!(*results_map.get(&3).unwrap() > 200);
+    }
+
+    #[test]
+    pub fn test_select_measure() {
+        let mut program = "
+        INITIALIZE R 2
+        U TENSOR H I(2)
+        APPLY U R
+        SELECT S1 R 0 1
+        MEASURE S1
+        APPLY CNOT R
+        MEASURE R".as_bytes();
+                
+        let tokens = scan(&mut program).unwrap();
+
+        for _ in 0..100 {
+            let results = emulate(&tokens).unwrap();
+            assert!(results == vec![0,0] || results == vec![1,3]);
+        }
+    }    
+}
